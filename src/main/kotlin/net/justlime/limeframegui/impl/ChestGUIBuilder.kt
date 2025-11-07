@@ -20,6 +20,24 @@ import org.bukkit.inventory.Inventory
  */
 class ChestGUIBuilder(val setting: GUISetting) {
 
+    /**
+     * The lazy-loading store. All items that don't fit on manually-defined
+     * pages will be stored here, waiting to be rendered.
+     */
+    private val paginationStore = mutableListOf<Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
+
+    /**
+     * Tracks the highest ID of a page you defined manually (e.g., in an `addPage(0) {}` block).
+     * This tells us where the lazy-loaded pages should begin.
+     */
+    private var lastManualPageId = 0
+
+    /**
+     * The total number of pages, combining manual and paginated ones.
+     * This will be calculated once, after the setup block.
+     */
+    private var totalPageCount = 0
+
     // Pages are temporarily stored here before being moved to the handler.
     val pages = mutableMapOf<Int, GUIPage>()
 
@@ -120,7 +138,7 @@ class ChestGUIBuilder(val setting: GUISetting) {
      * Creates a new page, correctly copying all items and handlers from the global page.
      */
     private fun createPage(pageId: Int, setting: GUISetting): GUIPage {
-        val newPage = GuiPageImpl(pageId, guiHandler, setting, this)
+        val newPage = GuiPageImpl(this,guiHandler,pageId,  setting)
 
         // Copy items from the global page's inventory to the new page.
         pages[ChestGUI.GLOBAL_PAGE]?.inventory?.contents?.forEachIndexed { index, itemStack ->

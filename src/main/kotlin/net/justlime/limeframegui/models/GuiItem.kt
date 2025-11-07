@@ -73,6 +73,9 @@ data class GuiItem(
     // Click Handling
     var onClick: (InventoryClickEvent) -> Unit = {}
 ) {
+    init {
+        this.itemStack = this.toItemStack()
+    }
 
     val currentName: String
         get() = nameState?.invoke() ?: name

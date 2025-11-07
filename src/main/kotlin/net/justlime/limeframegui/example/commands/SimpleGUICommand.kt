@@ -13,15 +13,18 @@ import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
+import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.ClickType
+import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 
 class SimpleGUICommand() : CommandHandler {
     override val permission: String = ""
     override val aliases: List<String> = mutableListOf()
 
-    override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String?>
+    override fun onCommand(
+        sender: CommandSender, command: Command, label: String, args: Array<out String?>
     ): Boolean {
         if (sender !is Player) {
             return true
@@ -55,7 +58,8 @@ class SimpleGUICommand() : CommandHandler {
         return true
     }
 
-    override fun onTabComplete(sender: CommandSender, command: Command, label: String, args: Array<out String?>
+    override fun onTabComplete(
+        sender: CommandSender, command: Command, label: String, args: Array<out String?>
     ): List<String?> {
         val completion = mutableListOf<String>()
         if (args.isNotEmpty()) completion.addAll(listOf("save", "page", "home", "nested", "formatted"))
@@ -203,6 +207,15 @@ class SimpleGUICommand() : CommandHandler {
                 event.update()
 
             }
+
+            val flaggedItem = GuiItem(Material.MUSIC_DISC_CAT)
+            flaggedItem.enchantments = mutableMapOf(Enchantment.UNBREAKING to 1)
+            val meta = flaggedItem.itemStack?.itemMeta
+            println(meta)
+            meta?.addItemFlags(ItemFlag.HIDE_ENCHANTS)
+            flaggedItem.itemStack?.itemMeta = meta
+            flaggedItem.flags = mutableListOf(ItemFlag.HIDE_ADDITIONAL_TOOLTIP)
+            addItem(flaggedItem)
 
             //The only difference in between them that static doesn't point to current variable state where dynamic does!
 

@@ -14,8 +14,9 @@ import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.inventory.Inventory
 
+class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHandler, override val currentPage: Int, private val setting: GUISetting) : GUIPage {
 
-class GuiPageImpl(override val currentPage: Int, override val handler: GUIEventHandler, val setting: GUISetting, private val builder: ChestGUIBuilder) : GUIPage {
+    private var trackPageId = currentPage
     override var inventory = handler.createPageInventory(currentPage, setting)
 
     override fun getItems(): Map<Int, GuiItem> {
@@ -27,8 +28,15 @@ class GuiPageImpl(override val currentPage: Int, override val handler: GUIEventH
         return items
     }
 
-    private var trackPageId = currentPage
     override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
+
+    override fun addPage(id: Int, rows: Int, title: String, block: GUIPage.() -> Unit) {
+        builder.addPage(id, rows, title, block)
+    }
+
+    override fun addPage(rows: Int, title: String, block: GUIPage.() -> Unit) {
+        builder.addPage(rows, title, block)
+    }
 
     override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
 
@@ -46,7 +54,7 @@ class GuiPageImpl(override val currentPage: Int, override val handler: GUIEventH
         // Try current page
         findFreeSlot(inventory).takeIf { it != -1 }?.let { slot ->
             inventory.setItem(slot, newItem)
-            trackAddItemSlot[slot] =newItem to onClick
+            trackAddItemSlot[slot] = newItem to onClick
             handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[slot] = { event ->
                 event.item = newItem
                 newItem.onClick(event)
@@ -206,6 +214,10 @@ class GuiPageImpl(override val currentPage: Int, override val handler: GUIEventH
         return this
     }
 
+    override fun nav(block: Navigation.() -> Unit) {
+        throw IllegalStateException("Navigation can only be configured at the top-level GUI builder. Its not ideal to be used in nested pages")
+    }
+
     override fun onOpen(handler: (InventoryOpenEvent) -> Unit) {
         this.handler.pageOpenHandlers[currentPage] = handler
 
@@ -217,18 +229,6 @@ class GuiPageImpl(override val currentPage: Int, override val handler: GUIEventH
 
     override fun onClick(handler: (InventoryClickEvent) -> Unit) {
         this.handler.pageClickHandlers[currentPage] = handler
-    }
-
-    override fun addPage(id: Int, rows: Int, title: String, block: GUIPage.() -> Unit) {
-        builder.addPage(id, rows, title, block)
-    }
-
-    override fun addPage(rows: Int, title: String, block: GUIPage.() -> Unit) {
-        builder.addPage(rows, title, block)
-    }
-
-    override fun nav(block: Navigation.() -> Unit) {
-        throw IllegalStateException("Navigation can only be configured at the top-level GUI builder. Its not ideal to be used in nested pages")
     }
 
     override fun openPage(player: Player, id: Int) {
