@@ -1,20 +1,20 @@
 package net.justlime.limeframegui.color
 
 import me.clip.placeholderapi.PlaceholderAPI
-import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.enums.CapsState
 import net.justlime.limeframegui.enums.ColorType
+import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.utilities.VersionHandler
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
 
-object FontColor {
+object FontStyle {
     var miniMessage: IMiniMessage? = null
     private lateinit var colorType: ColorType
 
-    fun setColorType(color: ColorType){
+    fun setColorType(color: ColorType) {
         colorType = color
     }
 
@@ -34,7 +34,7 @@ object FontColor {
      * Always returns a String.
      * - Priority to [OfflinePlayer] if both player type given
      */
-    fun applyColor(text: String, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = null): String {
+    fun applyStyle(text: String, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = null): String {
         var newText = text
 
         val playerName = player?.name ?: offlinePlayer?.name
@@ -48,8 +48,7 @@ object FontColor {
             }
         }
 
-
-       val text = when (colorType) {
+        val coloredText = when (colorType) {
             ColorType.LEGACY -> ChatColor.translateAlternateColorCodes('&', newText)
             ColorType.MINI_MESSAGE -> {
                 newText = newText.replaceLegacyToMini()
@@ -62,11 +61,20 @@ object FontColor {
             }
         }
 
-        return text.toSmallCaps(player,smallCaps)
+        val smallCapsText = coloredText.toSmallCaps(player, smallCaps)
+
+
+        return smallCapsText
     }
 
-    fun applyColor(text: List<String>, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = null): List<String> {
-        return text.map { applyColor(it, player, offlinePlayer, smallCaps, customPlaceholders) }
+    fun applyStyle(text: String, setting: GUISetting): String {
+        println(text)
+        return applyStyle(text, setting.placeholderPlayer, setting.placeholderOfflinePlayer, setting.smallCapsTitle, setting.customPlaceholder)
+
+    }
+
+    fun applyStyle(text: List<String>, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = null): List<String> {
+        return text.map { applyStyle(it, player, offlinePlayer, smallCaps, customPlaceholders) }
     }
 
     private fun String.replaceLegacyToMini(): String {
@@ -87,7 +95,6 @@ object FontColor {
         return result
     }
 
-
     /**
      * Converts a string to small caps with advanced tag support.
      *
@@ -99,16 +106,15 @@ object FontColor {
         val fontMaps: Map<String, Map<String, String>> = FontLoader.capsFont
         if (fontMaps.isEmpty() && useSmallCaps != true) return this
 
-        val bestVersionKey = fontMaps.keys
-            .sortedWith { v1, v2 -> VersionHandler.compareVersions(VersionHandler.parseVersion(v2), VersionHandler.parseVersion(v1)) }
-            .firstOrNull { versionKey ->
-                if (viewer != null) VersionHandler.isVersionSupported(viewer, versionKey)
-                else {
-                    val serverVersion = VersionHandler.parseVersion(VersionHandler.getNativeServerVersion())
-                    val keyVersion = VersionHandler.parseVersion(versionKey)
-                    VersionHandler.compareVersions(serverVersion, keyVersion) >= 0
-                }
+        val bestVersionKey = fontMaps.keys.sortedWith { v1, v2 -> VersionHandler.compareVersions(VersionHandler.parseVersion(v2), VersionHandler.parseVersion(v1)) }.firstOrNull { versionKey ->
+            if (viewer != null) VersionHandler.isVersionSupported(viewer, versionKey)
+            else {
+                val serverVersion = VersionHandler.parseVersion(VersionHandler.getNativeServerVersion())
+                val keyVersion = VersionHandler.parseVersion(versionKey)
+                VersionHandler.compareVersions(serverVersion, keyVersion) >= 0
             }
+        }
+        println(bestVersionKey)
 
         val selectedFontMap = fontMaps[bestVersionKey]
 
@@ -142,6 +148,7 @@ object FontColor {
             }
 
             // Append character, converting if necessary
+
             if (shouldConvert && selectedFontMap != null) {
                 when (char) {
                     '&', '§' -> {
@@ -151,6 +158,7 @@ object FontColor {
                             i++
                         }
                     }
+
                     else -> result.append(selectedFontMap[char.toString().lowercase()] ?: char)
                 }
             } else {
@@ -158,6 +166,8 @@ object FontColor {
             }
             i++
         }
+
+        Bukkit.getOnlinePlayers().forEach { it.sendMessage(result.toString()) }
 
         return result.toString()
     }

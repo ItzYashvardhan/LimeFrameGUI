@@ -17,6 +17,7 @@ import org.bukkit.inventory.Inventory
 class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHandler, override val currentPage: Int, private val setting: GUISetting) : GUIPage {
 
     private var trackPageId = currentPage
+
     override var inventory = handler.createPageInventory(currentPage, setting)
 
     override fun getItems(): Map<Int, GuiItem> {
@@ -30,12 +31,12 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
 
-    override fun addPage(id: Int, rows: Int, title: String, block: GUIPage.() -> Unit) {
-        builder.addPage(id, rows, title, block)
+    override fun addPage(id: Int, setting: GUISetting, block: GUIPage.() -> Unit) {
+        builder.addPage(id, setting, block)
     }
 
-    override fun addPage(rows: Int, title: String, block: GUIPage.() -> Unit) {
-        builder.addPage(rows, title, block)
+    override fun addPage(setting: GUISetting, block: GUIPage.() -> Unit) {
+        builder.addPage(setting, block)
     }
 
     override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
@@ -91,37 +92,10 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         val newPageId = findNextPageId(nextPageId)
         trackPageId = newPageId
         if (LimeFrameAPI.debugging) println("Creating NewPage $trackPageId")
-        addPage(trackPageId, setting.rows, setting.title) {
+        addPage(trackPageId, setting) {
             newSlot = addItem(newItem, onClick)
         }
         return newSlot
-    }
-
-    private fun getReservedSlots(inventory: Inventory): Set<Int> {
-        val lastSlot = inventory.size - 1
-        val lastRowFirstSlot = lastSlot - 8
-        val margin = builder.reservedSlot.navMargin
-
-        return buildSet {
-            // Handle next page slot
-            if (builder.reservedSlot.nextPageSlot != -1) {
-                add(builder.reservedSlot.nextPageSlot)
-            } else if (builder.reservedSlot.enableNavSlotReservation) {
-                add(lastSlot - margin)
-                builder.reservedSlot.otherSlot.addAll(lastRowFirstSlot..lastSlot)
-            }
-
-            // Handle previous page slot
-            if (builder.reservedSlot.prevPageSlot != -1) {
-                add(builder.reservedSlot.prevPageSlot)
-            } else if (builder.reservedSlot.enableNavSlotReservation) {
-                add(lastRowFirstSlot + margin)
-                builder.reservedSlot.otherSlot.addAll(lastRowFirstSlot..lastSlot)
-            }
-
-            // Add other reserved slots like rows
-            addAll(builder.reservedSlot.otherSlot)
-        }
     }
 
     override fun addItem(items: List<GuiItem>, onClick: ((GuiItem, InventoryClickEvent) -> Unit)) {
@@ -233,6 +207,33 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override fun openPage(player: Player, id: Int) {
         handler.open(player, id)
+    }
+
+    private fun getReservedSlots(inventory: Inventory): Set<Int> {
+        val lastSlot = inventory.size - 1
+        val lastRowFirstSlot = lastSlot - 8
+        val margin = builder.reservedSlot.navMargin
+
+        return buildSet {
+            // Handle next page slot
+            if (builder.reservedSlot.nextPageSlot != -1) {
+                add(builder.reservedSlot.nextPageSlot)
+            } else if (builder.reservedSlot.enableNavSlotReservation) {
+                add(lastSlot - margin)
+                builder.reservedSlot.otherSlot.addAll(lastRowFirstSlot..lastSlot)
+            }
+
+            // Handle previous page slot
+            if (builder.reservedSlot.prevPageSlot != -1) {
+                add(builder.reservedSlot.prevPageSlot)
+            } else if (builder.reservedSlot.enableNavSlotReservation) {
+                add(lastRowFirstSlot + margin)
+                builder.reservedSlot.otherSlot.addAll(lastRowFirstSlot..lastSlot)
+            }
+
+            // Add other reserved slots like rows
+            addAll(builder.reservedSlot.otherSlot)
+        }
     }
 
 }

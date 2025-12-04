@@ -78,7 +78,7 @@ tasks.register<Copy>("shadowJarCopy") {
     description = "Copy shadowJar jar to local test server"
     dependsOn("shadowJar")
     from(tasks.shadowJar.get().outputs.files.singleFile)
-    into("E:/Minecraft/servers/PaperMC-1.21.4/plugins")
+    into("E:/Minecraft/servers/Development/PaperMC-1.21.10/plugins")
 }
 
 

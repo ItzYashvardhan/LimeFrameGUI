@@ -2,6 +2,7 @@ package net.justlime.limeframegui.example.commands
 
 import net.justlime.limeframegui.handle.CommandHandler
 import net.justlime.limeframegui.impl.ConfigHandler
+import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.type.ChestGUI.Companion.GLOBAL_PAGE
@@ -53,6 +54,10 @@ class SimpleGUICommand() : CommandHandler {
                 formattedPage(sender)
             }
 
+            "formatted2" -> {
+                formattedPage2(sender)
+            }
+
             else -> {}
         }
         return true
@@ -62,7 +67,7 @@ class SimpleGUICommand() : CommandHandler {
         sender: CommandSender, command: Command, label: String, args: Array<out String?>
     ): List<String?> {
         val completion = mutableListOf<String>()
-        if (args.isNotEmpty()) completion.addAll(listOf("save", "page", "home", "nested", "formatted"))
+        if (args.isNotEmpty()) completion.addAll(listOf("save", "page", "home", "nested", "formatted", "formatted2"))
         return completion
     }
 
@@ -104,7 +109,7 @@ class SimpleGUICommand() : CommandHandler {
 //                    it.whoClicked.sendMessage("You click on global item")
 //                }
 //            }
-            addPage(6, "Regular Page {page}") {
+            addPage(GUISetting(6, "Regular Page {page}")) {
                 //this item added to specific page only (page 1)
                 for (i in 1..100) {
                     val newItem = item1.copy(name = "Item $i")
@@ -132,7 +137,7 @@ class SimpleGUICommand() : CommandHandler {
                 }
             }
 
-            addPage(4, "Custom Page {page}") {
+            addPage(GUISetting(4, "Custom Page {page}")) {
                 addItem(item4) {
                     it.whoClicked.sendMessage("Clicked on Item ${it.slot} at page $currentPage")
                 }
@@ -208,15 +213,6 @@ class SimpleGUICommand() : CommandHandler {
 
             }
 
-            val flaggedItem = GuiItem(Material.MUSIC_DISC_CAT)
-            flaggedItem.enchantments = mutableMapOf(Enchantment.UNBREAKING to 1)
-            val meta = flaggedItem.itemStack?.itemMeta
-            println(meta)
-            meta?.addItemFlags(ItemFlag.HIDE_ENCHANTS)
-            flaggedItem.itemStack?.itemMeta = meta
-            flaggedItem.flags = mutableListOf(ItemFlag.HIDE_ADDITIONAL_TOOLTIP)
-            addItem(flaggedItem)
-
             //The only difference in between them that static doesn't point to current variable state where dynamic does!
 
         }.open(player)
@@ -250,14 +246,15 @@ class SimpleGUICommand() : CommandHandler {
         ChestGUI(6, "Nested GUI") {
             onClick { it.isCancelled = true }
 
-            addPage(6, "Nested Page 1") {
+            addPage(GUISetting(6, "Nested Page 1")) {
                 val item1 = ItemStack(Material.PAPER).toGuiItem()
                 item1.name = "Go to Nested Page 2"
                 addItem(item1) {
                     openPage(it.whoClicked as Player, 2)
                 }
 
-                addPage(2, 6, "Nested Page 2") {
+                val setting = GUISetting(6, "Nested Page 2")
+                addPage(2, setting) {
                     val item2 = ItemStack(Material.DIAMOND).toGuiItem()
                     item2.name = "Go back to Nested Page 1"
                     addItem(item2) {
@@ -268,7 +265,9 @@ class SimpleGUICommand() : CommandHandler {
                     addItem(item3) {
                         openPage(it.whoClicked as Player, 3)
                     }
-                    addPage(3, 6, "Nested Page 3") {
+                    val setting2 = GUISetting(6, "Nested Page 2")
+
+                    addPage(3, setting2) {
                         val item4 = ItemStack(Material.IRON_INGOT).toGuiItem()
                         item4.name = "Go back to Nested Page 2"
                         addItem(item4) {
@@ -285,7 +284,79 @@ class SimpleGUICommand() : CommandHandler {
 
     fun formattedPage(player: Player) {
 
-        ChestGUI(6, "Formatted Page Example") {
+        ChestGUI(6, "Formatted Page Example - %statistic_time_played%") {
+
+            setting.smallCapsTitle = true //Enabled SmallCapsFont for title
+            setting.smallCapsItemName = true //Enabled SmallCapsFont for item name
+            setting.smallCapsItemLore = true //Enabled SmallCapsFont for item lore
+            setting.placeholderPlayer = player
+
+            onClick { it.isCancelled = true }
+            addPage {
+
+                val item1 = GuiItem(
+                    Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
+                        "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
+                    )
+                )
+
+                val item2 = GuiItem(
+                    material = Material.GOLD_INGOT, name = "Player: %player_name%", lore = listOf(
+                        "<gold>Balance: %vault_eco_balance%", "<white>Location: %player_x%, %player_y%, %player_z%"
+                    ), smallCapsName = false, //You can turn On/Off certain small caps for particular item
+                    smallCapsLore = false, glow = true
+                )
+
+                val item3 = GuiItem(
+                    material = Material.PLAYER_HEAD, name = "Player: {player}", lore = listOf(
+                        "<green>Playtime Stats: %statistic_time_played%", "<aqua>Click to refresh"
+                    ), texture = "{player}"
+                )
+
+                val item4 = GuiItem(
+                    material = Material.TOTEM_OF_UNDYING, name = "<#FF00FF>Custom PlaceHolder</#FF00FF>", lore = listOf(
+                        "<gray>World: {world}</gray>", "<gray>Location: {location}</gray>"
+
+                    ), customPlaceholder = mapOf(
+                        "{world}" to player.world.name, "{location}" to "${player.location.x.toInt()}, ${player.location.y.toInt()}, ${player.location.z.toInt()}"
+                    ), smallCapsName = false
+                )
+
+                val item5 =
+                    GuiItem(Material.PLAYER_HEAD, texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
+
+                addItem(item1) {
+                    it.whoClicked.sendMessage("Clicked formatted item!")
+                }
+
+                addItem(item2) {
+                    it.whoClicked.sendMessage("Clicked player placeholder item!")
+                }
+
+                addItem(item3) { event ->
+                    println(event.item?.name)
+                    println(event.currentItem?.itemMeta?.displayName)
+                    event.inventory.setItem(event.slot, event.item)
+                }
+
+                addItem(item3) { event ->
+                    println(item3.name)
+                    event.inventory.setItem(event.slot, item3) //This may break things not recommended
+                }
+
+                addItem(item4)
+                addItem(item5)
+            }
+        }.open(player)
+
+    }
+
+    fun formattedPage2(player: Player) {
+        println("Function Called")
+
+        ChestGUI(6, "Formatted Page Example - %statistic_time_played%") {
+
+            println("UI Called")
 
             setting.smallCapsTitle = true //Enabled SmallCapsFont for title
             setting.smallCapsItemName = true //Enabled SmallCapsFont for item name

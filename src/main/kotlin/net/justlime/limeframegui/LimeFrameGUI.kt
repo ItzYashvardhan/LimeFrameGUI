@@ -11,8 +11,13 @@ class LimeFrameGUI : JavaPlugin() {
     override fun onEnable() {
         this.saveDefaultConfig()
         CommandManager(this)
-        LimeFrameAPI.init(this, ColorType.LEGACY)
-        LimeFrameAPI.debugging = false
+        LimeFrameAPI.init(this, ColorType.MINI_MESSAGE)
+        LimeFrameAPI.setKeys {
+            smallCaps = true
+        }
+
+
+        LimeFrameAPI.debugging = true
     }
 
     override fun onDisable() {

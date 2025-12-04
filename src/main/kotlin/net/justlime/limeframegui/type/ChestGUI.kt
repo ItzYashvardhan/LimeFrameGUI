@@ -19,9 +19,9 @@ class ChestGUI(val setting: GUISetting, private val block: ChestGUIBuilder.() ->
     var minPageId: Int = 0
     var maxPageId: Int = 0
 
-    init { init() }
 
     fun init() {
+        if (this::guiHandler.isInitialized) return
         val builder = ChestGUIBuilder(setting)
         builder.apply(block)
         this.guiHandler = builder.build()
@@ -46,15 +46,15 @@ class ChestGUI(val setting: GUISetting, private val block: ChestGUIBuilder.() ->
      * @param player The player to open the GUI for.
      * @param page The page number to open to.
      */
-    fun open(player: Player, page: Int = minPageId) {
+    fun open(player: Player, page: Int? = null) {
         if (setting.placeholderPlayer == null && setting.placeholderOfflinePlayer == null) {
             setting.placeholderPlayer = player
             init()
-            guiHandler.open(player, page)
+            guiHandler.open(player, page?: minPageId)
             return
         }
         init()
-        guiHandler.open(player, page)
+        guiHandler.open(player, page?: minPageId)
     }
 
     companion object {

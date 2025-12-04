@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.models
 
-import net.justlime.limeframegui.color.FontColor
+import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.utilities.SkullProfileCache
 import net.justlime.limeframegui.utilities.SkullUtils
 import org.bukkit.Bukkit
@@ -67,156 +67,148 @@ data class GuiItem(
     var smallCapsName: Boolean? = null,
     var smallCapsLore: Boolean? = null,
 
-    //base ItemStack
-    var itemStack: ItemStack? = null,
+    private var baseItemStack: ItemStack? = null,
 
     // Click Handling
     var onClick: (InventoryClickEvent) -> Unit = {}
 ) {
-    init {
-        this.itemStack = this.toItemStack()
-    }
 
-    val currentName: String
-        get() = nameState?.invoke() ?: name
+    // Helper properties to resolve dynamic state vs static state
+    val currentName: String get() = nameState?.invoke() ?: name
 
-    val currentLore: List<String>
-        get() = loreState?.invoke() ?: lore
+    val currentLore: List<String> get() = loreState?.invoke() ?: lore
 
-    companion object {
-        fun air(): GuiItem {
-            return GuiItem(name = "", material = Material.AIR)
-        }
-    }
-
+    /**
+     * Renders the GuiItem into a Bukkit ItemStack.
+     * This merges the 'baseItemStack' (if present) with the specific properties defined in this class.
+     */
     fun toItemStack(): ItemStack {
-        val item = this.itemStack?.clone()?.apply {
-            if (this@GuiItem.amount != 1 || this.amount <= 0) {
-                this.amount = this@GuiItem.amount
-            }
-        } ?: if (material.name.contains("PLAYER_HEAD", ignoreCase = true) && !texture.isNullOrEmpty()) {
-            ItemStack(Material.PLAYER_HEAD, amount)
+        // 1. Determine the starting ItemStack
+        val item = if (baseItemStack != null) {
+            baseItemStack!!.clone()
         } else {
-            // If no items tack is provided, ensure material is not AIR (unless intended)
-            if (material == Material.AIR && name.isEmpty() && currentName.isEmpty() && lore.isEmpty() && currentLore.isEmpty()) {
-                return ItemStack(Material.AIR)
-            }
-            try {
-                ItemStack(material, amount)
-            } catch (e: Exception) {
-                ItemStack(Material.AIR)
+
+            // Handle Special Case: Textured Player Heads
+            if (isPlayerHead() && !texture.isNullOrEmpty()) {
+                ItemStack(Material.PLAYER_HEAD)
+            } else {
+                // If material is AIR and no content exists, return AIR immediately
+                if (material == Material.AIR && isEmpty()) return ItemStack(Material.AIR)
+                ItemStack(material)
             }
         }
+
+        // 2. Update Amount
+        item.amount = amount.coerceAtLeast(1)
 
         val meta = item.itemMeta ?: return item
 
-        //Skull Texture
+        // 3. Apply Textures (If Skull)
         if (meta is SkullMeta && !texture.isNullOrEmpty()) {
-            if (texture.equals("{player}", ignoreCase = true)) {
-
-                if (placeholderPlayer != null) {
-                    if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) {
-                        // Modern Way (1.18+)
-                        meta.ownerProfile = placeholderPlayer!!.playerProfile
-                    } else {
-                        // Legacy Way (pre-1.18)
-                        meta.owningPlayer = placeholderPlayer
-                    }
-                } else if (placeholderOfflinePlayer != null) {
-                    meta.owningPlayer = placeholderOfflinePlayer
-                }
-
-            } else if (texture!!.startsWith("[") && texture!!.endsWith("]")) {
-                // It's a UUID, e.g., "[069a79f4-44e9-4726-a5be-fca90e38aaf5]"
-                try {
-                    val uuidString = texture!!.substring(1, texture!!.length - 1)
-                    val uuid = UUID.fromString(uuidString)
-                    val owner = Bukkit.getOfflinePlayer(uuid)
-                    if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) {
-                        meta.ownerProfile = owner.playerProfile
-                    } else {
-                        meta.owningPlayer = owner
-                    }
-                } catch (_: IllegalArgumentException) {
-                    // Ignore if the UUID is malformed. The skull will be default.
-                }
-            } else {
-                // Assume it's a Base64 texture value
-                SkullUtils.applySkin(meta, SkullProfileCache.getProfile(texture!!))
-            }
+            applySkullTexture(meta)
         }
 
-        meta.setDisplayName(FontColor.applyColor(if (nameState != null) currentName else name, placeholderPlayer, placeholderOfflinePlayer, smallCapsName, customPlaceholder))
-        if (lore.isNotEmpty() || currentLore.isNotEmpty()) {
-            meta.lore = try {
-                FontColor.applyColor(if (loreState != null) currentLore else lore, placeholderPlayer, placeholderOfflinePlayer, smallCapsLore, customPlaceholder)
-            } catch (_: Throwable) {
-                lore
-            }
+        // 4. Apply Display Name & Lore (with placeholders and colors)
+        val finalName = FontStyle.applyStyle(currentName, placeholderPlayer, placeholderOfflinePlayer, smallCapsName, customPlaceholder)
+        meta.setDisplayName(finalName)
+
+        val rawLore = currentLore
+        if (rawLore.isNotEmpty()) {
+            meta.lore = FontStyle.applyStyle(
+                rawLore, placeholderPlayer, placeholderOfflinePlayer, smallCapsLore, customPlaceholder
+            )
         }
 
-        // Glow
-        try {
-            meta.setEnchantmentGlintOverride(glow)
-        } catch (_: Throwable) {
-            if (glow) {
-                val unbreaking = Enchantment.getByName("UNBREAKING") ?: Enchantment.getByName("DURABILITY")!!
-                meta.addEnchant(unbreaking, 1, true)
-                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS)
-            }
-        }
-
-        // Item flags
-        if (flags.isNotEmpty()) {
+        // 5. Apply Glow
+        if (glow) {
             try {
-                meta.addItemFlags(*flags.toTypedArray())
-            } catch (_: Throwable) {
-                // Ignore
-            }
-        }
-
-        // Custom model data
-        customModelData?.let {
-            try {
-                meta.setCustomModelData(it)
-            } catch (_: Throwable) {
-                // Ignore
-            }
-        }
-
-        // Enchantments
-        if (enchantments.isNotEmpty()) {
-            enchantments.forEach { (enchantment, lvl) -> meta.addEnchant(enchantment, lvl, true) }
-        }
-
-        // Unbreakable
-        try {
-            meta.isUnbreakable = unbreakable
-        } catch (_: Throwable) {
-            // Ignore
-        }
-
-        // Damage (durability)
-        damage?.let {
-            if (meta is Damageable) {
-                try {
-                    meta.damage = it
-                } catch (_: Throwable) {
-                    // Ignore
+                // Modern API (1.20.4+)
+                meta.setEnchantmentGlintOverride(true)
+            } catch (_: NoSuchMethodError) {
+                // Legacy Fallback
+                val dummyEnchant = Enchantment.getByName("UNBREAKING") ?: Enchantment.getByName("DURABILITY")
+                if (dummyEnchant != null) {
+                    meta.addEnchant(dummyEnchant, 1, true)
+                    meta.addItemFlags(ItemFlag.HIDE_ENCHANTS)
                 }
             }
         }
+
+        // 6. Apply Item Flags
+        if (flags.isNotEmpty()) { meta.addItemFlags(*flags.toTypedArray()) }
+
+        // 7. Custom Model Data
+        if (customModelData != null) { meta.setCustomModelData(customModelData) }
+
+        // 8. Enchantments
+        if (enchantments.isNotEmpty()) { enchantments.forEach { (ench, lvl) -> meta.addEnchant(ench, lvl, true) } }
+
+        // 9. Unbreakable & Damage
+        meta.isUnbreakable = unbreakable
+        if (damage != null && meta is Damageable) { meta.damage = damage!! }
 
         item.itemMeta = meta
         return item
     }
 
     /**
+     * Applies texture logic specifically for SkullMeta.
+     */
+    private fun applySkullTexture(meta: SkullMeta) {
+        val tex = texture ?: return
+
+        when {
+            // Case A: {player} placeholder
+            tex.equals("{player}", ignoreCase = true) -> {
+                placeholderPlayer?.let { p ->
+                    if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = p.playerProfile
+                    else meta.owningPlayer = p
+                } ?: placeholderOfflinePlayer?.let { op ->
+                    meta.owningPlayer = op
+                }
+            }
+            // Case B: UUID string "[uuid]"
+            tex.startsWith("[") && tex.endsWith("]") -> {
+                try {
+                    val uuid = UUID.fromString(tex.substring(1, tex.length - 1))
+                    val owner = Bukkit.getOfflinePlayer(uuid)
+                    if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = owner.playerProfile
+                    else meta.owningPlayer = owner
+                } catch (_: Exception) { /* Ignore malformed UUID */
+                }
+            }
+            // Case C: Base64 Texture
+            else -> {
+                SkullUtils.applySkin(meta, SkullProfileCache.getProfile(tex))
+            }
+        }
+    }
+
+    private fun isEmpty(): Boolean {
+        return name.isEmpty() && currentName.isEmpty() && lore.isEmpty() && currentLore.isEmpty()
+    }
+
+    private fun isPlayerHead(): Boolean {
+        return material.name.contains("PLAYER_HEAD", ignoreCase = true) || material.name.contains("SKULL_ITEM", ignoreCase = true)
+    }
+
+    /**
+     * Updates the internal base item stack.
+     */
+    fun setItemStack(stack: ItemStack) {
+        this.baseItemStack = stack.clone()
+        this.material = stack.type
+        this.amount = stack.amount
+    }
+
+    fun getItemStack(): ItemStack? = baseItemStack
+
+    /**
      * Creates a deep copy of the GuiItem.
      */
     fun clone(): GuiItem {
         return this.copy(
-            lore = this.lore.toMutableList(), flags = this.flags.toList(), slotList = this.slotList.toMutableList(), enchantments = this.enchantments.toMap(), customPlaceholder = this.customPlaceholder?.toMap(), itemStack = this.itemStack?.clone()
+            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), customPlaceholder = this.customPlaceholder?.toMap(), baseItemStack = this.baseItemStack?.clone()
         )
     }
 }

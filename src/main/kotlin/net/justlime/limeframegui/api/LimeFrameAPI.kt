@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.api
 
-import net.justlime.limeframegui.color.FontColor
+import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.enums.ColorType
 import net.justlime.limeframegui.listener.InventoryListener
 import net.justlime.limeframegui.listener.PluginListener
@@ -21,8 +21,8 @@ object LimeFrameAPI {
         this.plugin = plugin
         Bukkit.getPluginManager().registerEvents(InventoryListener(plugin), plugin)
 
-        FontColor.setColorType(colorType)
-        if (colorType == ColorType.MINI_MESSAGE) FontColor.initMiniMessage()
+        FontStyle.setColorType(colorType)
+        if (colorType == ColorType.MINI_MESSAGE) FontStyle.initMiniMessage()
 
         //run a task on plugin disable
         Bukkit.getPluginManager().registerEvents(PluginListener(), plugin)
