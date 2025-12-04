@@ -12,11 +12,7 @@ class LimeFrameGUI : JavaPlugin() {
         this.saveDefaultConfig()
         CommandManager(this)
         LimeFrameAPI.init(this, ColorType.MINI_MESSAGE)
-        LimeFrameAPI.setKeys {
-            smallCaps = true
-        }
-
-
+        LimeFrameAPI.setKeys { smallCaps = true }
         LimeFrameAPI.debugging = false
     }
 

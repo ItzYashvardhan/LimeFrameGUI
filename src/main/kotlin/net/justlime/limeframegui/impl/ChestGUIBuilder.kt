@@ -8,6 +8,7 @@ import net.justlime.limeframegui.models.FrameReservedSlotPage
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.type.ChestGUI
+import net.justlime.limeframegui.utilities.setItem
 import net.justlime.limeframegui.utilities.toGuiItem
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryCloseEvent
@@ -43,7 +44,7 @@ class ChestGUIBuilder(val setting: GUISetting) {
     val pages = mutableMapOf<Int, GUIPage>()
 
     /**Main Handler for Registering Events**/
-    private val guiHandler : GUIEventHandler = GUIEventImpl(setting)
+    private val guiHandler: GUIEventHandler = GUIEventImpl(setting)
 
     // All configuration steps are queued as prioritized actions to be executed in order during build().
     private val actions = mutableListOf<Pair<ChestGuiActions, () -> Unit>>()
@@ -118,7 +119,6 @@ class ChestGUIBuilder(val setting: GUISetting) {
      */
     fun addPage(setting: GUISetting = this.setting, block: GUIPage.() -> Unit) {
 
-
         val runBlock = {
             val newId = (pages.keys.maxOrNull() ?: ChestGUI.GLOBAL_PAGE) + 1
             if (LimeFrameAPI.debugging) println("Starting Execution of Page $newId")
@@ -140,11 +140,13 @@ class ChestGUIBuilder(val setting: GUISetting) {
      * Creates a new page, correctly copying all items and handlers from the global page.
      */
     private fun createPage(pageId: Int, setting: GUISetting): GUIPage {
-        val newPage: GUIPage = GuiPageImpl(this,guiHandler,pageId,  setting)
+        val newPage: GUIPage = GuiPageImpl(this, guiHandler, pageId, setting)
 
         // Copy items from the global page's inventory to the new page.
-        pages[ChestGUI.GLOBAL_PAGE]?.inventory?.contents?.forEachIndexed { index, itemStack ->
-            if (itemStack != null) newPage.setItem(index, itemStack.toGuiItem())
+        val globalPage = pages[ChestGUI.GLOBAL_PAGE] ?: return newPage
+
+        globalPage.inventory.contents.forEachIndexed { index, item ->
+            if (item != null){ newPage.inventory.setItem(index, item) }
         }
 
         // Copy item click handlers from the global page to the new page.

@@ -12,6 +12,7 @@ import org.bukkit.inventory.Inventory
 interface GUIPage {
     val currentPage: Int
     var inventory: Inventory
+    val contents: MutableList<GuiItem?>
 
     /**Structure: Slot -> Item to Click**/
     var trackAddItemSlot: MutableMap<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>

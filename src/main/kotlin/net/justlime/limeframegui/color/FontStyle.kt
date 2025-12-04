@@ -68,9 +68,7 @@ object FontStyle {
     }
 
     fun applyStyle(text: String, setting: GUISetting): String {
-        println(text)
         return applyStyle(text, setting.placeholderPlayer, setting.placeholderOfflinePlayer, setting.smallCapsTitle, setting.customPlaceholder)
-
     }
 
     fun applyStyle(text: List<String>, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = null): List<String> {

@@ -20,6 +20,8 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override var inventory = handler.createPageInventory(currentPage, setting)
 
+    override val contents: MutableList<GuiItem?> = mutableListOf() //TODO
+
     override fun getItems(): Map<Int, GuiItem> {
         val items = mutableMapOf<Int, GuiItem>()
         for (i in 0 until inventory.contents.size) {
@@ -40,6 +42,7 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
     }
 
     override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
+
 
         //This way it can prevent item from overriding
         val newItem = item.clone()
@@ -81,7 +84,6 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
             findFreeSlot(inv).takeIf { it != -1 }?.let { slot ->
                 inv.setItem(slot, newItem)
                 builder.pages[nextPageId]?.trackAddItemSlot[slot] = newItem to onClick
-
                 handler.itemClickHandler.computeIfAbsent(nextPageId) { mutableMapOf() }[slot] = onClick
                 return slot
             }

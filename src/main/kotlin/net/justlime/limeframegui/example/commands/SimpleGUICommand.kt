@@ -290,15 +290,32 @@ class SimpleGUICommand() : CommandHandler {
             setting.smallCapsItemName = true //Enabled SmallCapsFont for item name
             setting.smallCapsItemLore = true //Enabled SmallCapsFont for item lore
             setting.placeholderPlayer = player
+            val item1 = GuiItem(
+                Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
+                    "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
+                )
+            )
+
+            addItem(item1){
+                it.whoClicked.sendMessage("Clicked formatted item!")
+            }
+
+            setItem(item1,12){
+                it.whoClicked.sendMessage("Clicked formatted item on ${it.slot}!")
+            }
 
             onClick { it.isCancelled = true }
             addPage {
 
-                val item1 = GuiItem(
+                val item12 = GuiItem(
                     Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
                         "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
                     )
                 )
+
+                addItem(item12) {
+                    it.whoClicked.sendMessage("Clicked formatted item!")
+                }
 
                 val item2 = GuiItem(
                     material = Material.GOLD_INGOT, name = "Player: %player_name%", lore = listOf(
@@ -325,9 +342,7 @@ class SimpleGUICommand() : CommandHandler {
                 val item5 =
                     GuiItem(Material.PLAYER_HEAD, texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
 
-                addItem(item1) {
-                    it.whoClicked.sendMessage("Clicked formatted item!")
-                }
+
 
                 addItem(item2) {
                     it.whoClicked.sendMessage("Clicked player placeholder item!")

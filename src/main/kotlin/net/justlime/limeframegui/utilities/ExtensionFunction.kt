@@ -131,6 +131,7 @@ fun Inventory.setItem(index: Int, item: GuiItem?): Boolean {
         return true
     }
     val stack = item.toItemStack()
+
     if (index in 0 until this.size) {
         this.setItem(index, stack)
         return true
