@@ -3,10 +3,10 @@
 spigot = "1.21.10-R0.1-SNAPSHOT"
 authlib = "1.5.25"
 headdb = "1.3.2"
-papi_version = "2.11.6"
+papi_version = "2.11.7"
 bstats = "3.1.0"
 annotaiton = "23.0.0"
-reflection = "2.1.0"
+reflection = "2.1.21"
 
 # Implementation
 adventure = "4.24.0"
