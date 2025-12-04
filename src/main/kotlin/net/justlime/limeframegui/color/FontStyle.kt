@@ -114,8 +114,6 @@ object FontStyle {
                 VersionHandler.compareVersions(serverVersion, keyVersion) >= 0
             }
         }
-        println(bestVersionKey)
-
         val selectedFontMap = fontMaps[bestVersionKey]
 
         val result = StringBuilder()
@@ -166,8 +164,6 @@ object FontStyle {
             }
             i++
         }
-
-        Bukkit.getOnlinePlayers().forEach { it.sendMessage(result.toString()) }
 
         return result.toString()
     }

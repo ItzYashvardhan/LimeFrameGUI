@@ -17,7 +17,7 @@ class LimeFrameGUI : JavaPlugin() {
         }
 
 
-        LimeFrameAPI.debugging = true
+        LimeFrameAPI.debugging = false
     }
 
     override fun onDisable() {
