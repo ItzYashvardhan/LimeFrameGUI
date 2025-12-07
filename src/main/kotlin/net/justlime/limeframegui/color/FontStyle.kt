@@ -3,7 +3,7 @@ package net.justlime.limeframegui.color
 import me.clip.placeholderapi.PlaceholderAPI
 import net.justlime.limeframegui.enums.CapsState
 import net.justlime.limeframegui.enums.ColorType
-import net.justlime.limeframegui.models.GUISetting
+import net.justlime.limeframegui.models.LimeStyleSheet
 import net.justlime.limeframegui.utilities.VersionHandler
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
@@ -34,16 +34,16 @@ object FontStyle {
      * Always returns a String.
      * - Priority to [OfflinePlayer] if both player type given
      */
-    fun applyStyle(text: String, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = null): String {
+    fun applyStyle(text: String, styleSheet: LimeStyleSheet): String {
         var newText = text
 
-        val playerName = player?.name ?: offlinePlayer?.name
-        newText = newText.customPlaceholder(playerName, customPlaceholders)
+        val playerName = styleSheet.player?.name ?: styleSheet.offlinePlayer?.name
+        newText = newText.customPlaceholder(playerName, styleSheet.placeholder)
 
         if (isPlaceholderAPIEnabled) {
             newText = when {
-                offlinePlayer != null -> PlaceholderAPI.setPlaceholders(offlinePlayer, newText)
-                player != null -> PlaceholderAPI.setPlaceholders(player, newText)
+                styleSheet.offlinePlayer != null -> PlaceholderAPI.setPlaceholders(styleSheet.offlinePlayer, newText)
+                styleSheet.player != null -> PlaceholderAPI.setPlaceholders(styleSheet.player, newText)
                 else -> newText
             }
         }
@@ -61,18 +61,14 @@ object FontStyle {
             }
         }
 
-        val smallCapsText = coloredText.toSmallCaps(player, smallCaps)
+        val smallCapsText = coloredText.toSmallCaps(styleSheet.player, styleSheet.stylishTitle)
 
 
         return smallCapsText
     }
 
-    fun applyStyle(text: String, setting: GUISetting): String {
-        return applyStyle(text, setting.placeholderPlayer, setting.placeholderOfflinePlayer, setting.smallCapsTitle, setting.customPlaceholder)
-    }
-
-    fun applyStyle(text: List<String>, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = mutableMapOf()): List<String> {
-        return text.map { applyStyle(it, player, offlinePlayer, smallCaps, customPlaceholders) }
+    fun applyStyle(text: List<String>, styleSheet: LimeStyleSheet): List<String> {
+        return text.map { applyStyle(it, styleSheet) }
     }
 
     private fun String.replaceLegacyToMini(): String {

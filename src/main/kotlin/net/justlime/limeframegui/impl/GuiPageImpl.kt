@@ -43,18 +43,13 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
 
-
         //This way it can prevent item from overriding
         val newItem = item.clone()
 
         fun findFreeSlot(inv: Inventory): Int = (0 until inv.size).firstOrNull { it !in getReservedSlots(inv) && inv.getItem(it) == null } ?: -1
 
         // Apply placeholders from setting if not set
-        if (newItem.placeholderPlayer == null) newItem.placeholderPlayer = setting.placeholderPlayer
-        if (newItem.placeholderOfflinePlayer == null) newItem.placeholderOfflinePlayer = setting.placeholderOfflinePlayer
-        if (newItem.smallCapsName == null) newItem.smallCapsName = setting.smallCapsItemName
-        if (newItem.smallCapsLore == null) newItem.smallCapsLore = setting.smallCapsItemLore
-        if (newItem.customPlaceholder.isEmpty()) newItem.customPlaceholder = setting.customPlaceholder
+        if (newItem.styleSheet == null) newItem.styleSheet = setting.styleSheet
 
         // Try current page
         findFreeSlot(inventory).takeIf { it != -1 }?.let { slot ->
@@ -112,11 +107,8 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         val newItem = item.clone()
 
         if (index < inventory.size) {
-            if (newItem.placeholderPlayer == null) newItem.placeholderPlayer = setting.placeholderPlayer
-            if (newItem.placeholderOfflinePlayer == null) newItem.placeholderOfflinePlayer = setting.placeholderOfflinePlayer
-            if (newItem.smallCapsName == null) newItem.smallCapsName = setting.smallCapsItemName
-            if (newItem.smallCapsLore == null) newItem.smallCapsLore = setting.smallCapsItemLore
-            if (newItem.customPlaceholder.isEmpty()) newItem.customPlaceholder = setting.customPlaceholder
+            if (newItem.styleSheet == null) newItem.styleSheet = setting.styleSheet
+
             inventory.setItem(index, newItem)
             handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[index] = { event ->
                 event.item = newItem

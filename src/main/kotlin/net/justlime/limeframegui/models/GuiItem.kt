@@ -5,9 +5,7 @@ import net.justlime.limeframegui.utilities.SkullProfileCache
 import net.justlime.limeframegui.utilities.SkullUtils
 import org.bukkit.Bukkit
 import org.bukkit.Material
-import org.bukkit.OfflinePlayer
 import org.bukkit.enchantments.Enchantment
-import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
@@ -31,10 +29,7 @@ import java.util.*
  * @param damage The current damage/durability value of the item (0 = new).
  * @param slot Single slot index to place this item into.
  * @param slotList Multiple slot indices to place the same item in several slots.
- * @param placeholderPlayer Player object used for applying placeholders in displayName and lore.
- * @param placeholderOfflinePlayer OfflinePlayer object used for applying placeholders in displayName and lore.
- * @param smallCapsName Whether to apply small caps formatting to the display name.
- * @param smallCapsLore Whether to apply small caps formatting to the lore.
+ * @param styleSheet StyleSheet to display stylish and dynamic text (i.e, custom placeholder, small cap's font)
  * @param onClick Event callback invoked when this item is clicked in the GUI (TODO).
  */
 data class GuiItem(
@@ -61,11 +56,7 @@ data class GuiItem(
     // Placeholder & Dynamic Content
     val nameState: (() -> String)? = null,
     val loreState: (() -> List<String>)? = null,
-    var customPlaceholder: Map<String, String> = mutableMapOf(),
-    var placeholderPlayer: Player? = null,
-    var placeholderOfflinePlayer: OfflinePlayer? = null,
-    var smallCapsName: Boolean? = null,
-    var smallCapsLore: Boolean? = null,
+    var styleSheet: LimeStyleSheet? = null,
 
     private var baseItemStack: ItemStack? = null,
 
@@ -109,14 +100,15 @@ data class GuiItem(
         }
 
         // 4. Apply Display Name & Lore (with placeholders and colors)
-        val finalName = FontStyle.applyStyle(currentName, placeholderPlayer, placeholderOfflinePlayer, smallCapsName, customPlaceholder)
-        meta.setDisplayName(finalName)
-
-        val rawLore = currentLore
-        if (rawLore.isNotEmpty()) {
-            meta.lore = FontStyle.applyStyle(
-                rawLore, placeholderPlayer, placeholderOfflinePlayer, smallCapsLore, customPlaceholder
-            )
+        styleSheet?.let {
+            val finalName = FontStyle.applyStyle(currentName, it)
+            meta.setDisplayName(finalName)
+        }
+        styleSheet?.let {
+            val rawLore = currentLore
+            if (rawLore.isNotEmpty()) {
+                meta.lore = FontStyle.applyStyle(rawLore, it)
+            }
         }
 
         // 5. Apply Glow
@@ -146,7 +138,7 @@ data class GuiItem(
 
         // 8. Enchantments
         if (enchantments.isNotEmpty()) {
-            enchantments.forEach { (ench, lvl) -> meta.addEnchant(ench, lvl, true) }
+            enchantments.forEach { (enchantment, lvl) -> meta.addEnchant(enchantment, lvl, true) }
         }
 
         // 9. Unbreakable & Damage
@@ -168,10 +160,10 @@ data class GuiItem(
         when {
             // Case A: {player} placeholder
             tex.equals("{player}", ignoreCase = true) -> {
-                placeholderPlayer?.let { p ->
+                styleSheet?.player?.let { p ->
                     if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = p.playerProfile
                     else meta.owningPlayer = p
-                } ?: placeholderOfflinePlayer?.let { op ->
+                } ?: styleSheet?.offlinePlayer?.let { op ->
                     meta.owningPlayer = op
                 }
             }
@@ -216,7 +208,7 @@ data class GuiItem(
      */
     fun clone(): GuiItem {
         return this.copy(
-            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), customPlaceholder = this.customPlaceholder.toMap(), baseItemStack = this.baseItemStack?.clone()
+            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), styleSheet = this.styleSheet, baseItemStack = this.baseItemStack?.clone()
         )
     }
 }
