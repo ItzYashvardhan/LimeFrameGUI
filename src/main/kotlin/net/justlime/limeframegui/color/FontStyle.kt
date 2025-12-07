@@ -34,7 +34,7 @@ object FontStyle {
      * Always returns a String.
      * - Priority to [OfflinePlayer] if both player type given
      */
-    fun applyStyle(text: String, styleSheet: LimeStyleSheet): String {
+    fun applyStyle(text: String, styleSheet: LimeStyleSheet, useStylishFont: Boolean): String {
         var newText = text
 
         val playerName = styleSheet.player?.name ?: styleSheet.offlinePlayer?.name
@@ -61,14 +61,14 @@ object FontStyle {
             }
         }
 
-        val smallCapsText = coloredText.toSmallCaps(styleSheet.player, styleSheet.stylishTitle)
+        val smallCapsText = coloredText.toSmallCaps(styleSheet.player, useStylishFont)
 
 
         return smallCapsText
     }
 
-    fun applyStyle(text: List<String>, styleSheet: LimeStyleSheet): List<String> {
-        return text.map { applyStyle(it, styleSheet) }
+    fun applyStyle(text: List<String>, styleSheet: LimeStyleSheet, useStylishFont: Boolean): List<String> {
+        return text.map { applyStyle(it, styleSheet, useStylishFont) }
     }
 
     private fun String.replaceLegacyToMini(): String {

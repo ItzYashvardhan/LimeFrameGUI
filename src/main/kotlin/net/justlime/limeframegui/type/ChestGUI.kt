@@ -3,6 +3,7 @@ package net.justlime.limeframegui.type
 import net.justlime.limeframegui.handle.GUIEventHandler
 import net.justlime.limeframegui.impl.ChestGUIBuilder
 import net.justlime.limeframegui.models.GUISetting
+import net.justlime.limeframegui.models.LimeStyleSheet
 import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
 
@@ -12,16 +13,16 @@ import org.bukkit.inventory.Inventory
  * @param setting The settings for the GUI, including rows, title, and optional player for placeholders.
  */
 class ChestGUI(val setting: GUISetting, private val block: ChestGUIBuilder.() -> Unit = {}) {
-    constructor(row: Int, title: String, player: Player? = null, block: ChestGUIBuilder.() -> Unit) : this(GUISetting(row, title, player), block)
+    constructor(row: Int, title: String, player: Player? = null, block: ChestGUIBuilder.() -> Unit) : this(GUISetting(row, title, styleSheet = LimeStyleSheet(player)), block)
 
     private lateinit var guiHandler: GUIEventHandler
     private lateinit var pages: MutableMap<Int, Inventory>
     var minPageId: Int = 0
     var maxPageId: Int = 0
 
-    fun init() {
+    fun build() {
         if (this::guiHandler.isInitialized) return
-        val builder = ChestGUIBuilder(setting)
+        val builder = ChestGUIBuilder(setting.copy())
         builder.apply(block)
         this.guiHandler = builder.build()
         pages = guiHandler.pageInventories
@@ -34,8 +35,8 @@ class ChestGUI(val setting: GUISetting, private val block: ChestGUIBuilder.() ->
      * @param page The page number to open to.
      */
     fun open(page: Int = minPageId) {
-        init()
-        setting.placeholderPlayer?.let { guiHandler.open(it, page) }
+        build()
+        setting.styleSheet?.player?.let { guiHandler.open(it, page) }
     }
 
     /**
@@ -44,13 +45,14 @@ class ChestGUI(val setting: GUISetting, private val block: ChestGUIBuilder.() ->
      * @param page The page number to open to.
      */
     fun open(player: Player, page: Int? = null) {
-        if (setting.placeholderPlayer == null && setting.placeholderOfflinePlayer == null) {
-            setting.placeholderPlayer = player
-            init()
+        if (setting.styleSheet == null) setting.styleSheet = LimeStyleSheet(player)
+        if (setting.styleSheet?.player == null && setting.styleSheet?.offlinePlayer == null) {
+            setting.styleSheet?.player = player
+            build()
             guiHandler.open(player, page ?: minPageId)
             return
         }
-        init()
+        build()
         guiHandler.open(player, page ?: minPageId)
     }
 

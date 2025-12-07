@@ -3,6 +3,7 @@ package net.justlime.limeframegui.impl
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.LimeStyleSheet
 import net.justlime.limeframegui.utilities.FrameConverter
 import net.justlime.limeframegui.utilities.toGuiItem
 import org.bukkit.Bukkit
@@ -65,8 +66,10 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
                 slotList = getIntegerList(keys.slotList),
                 unbreakable = getBoolean(keys.unbreakable, false),
                 damage = takeIf { contains(keys.damage) }?.getInt(keys.damage),
-                smallCapsName = takeIf { contains(keys.smallCapsName) }?.getBoolean(keys.smallCapsName),
-                smallCapsLore = takeIf { contains(keys.smallCapsLore) }?.getBoolean(keys.smallCapsLore),
+                styleSheet = LimeStyleSheet(
+                    stylishName = takeIf { contains(keys.stylishFontName) }?.getBoolean(keys.stylishFontName) ?: keys.stylishName,
+                    stylishLore = takeIf { contains(keys.stylishFontLore) }?.getBoolean(keys.stylishFontLore) ?: keys.stylishLore,
+                ),
             )
         }
     }
@@ -138,10 +141,10 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         val section = config.getConfigurationSection(path) ?: return GUISetting(keys.defaultInventoryRows, keys.defaultInventoryTitle)
         val title = section.getString(keys.inventoryTitle, keys.defaultInventoryTitle) ?: keys.defaultInventoryTitle
         val rows = section.getInt(keys.inventoryRows, keys.defaultInventoryRows)
-        val fontTitle = section.getBoolean(keys.smallCapsTitle, LimeFrameAPI.keys.smallCaps)
-        val fontItemName = section.getBoolean(keys.smallCapsName, LimeFrameAPI.keys.smallCaps)
-        val fontItemLore = section.getBoolean(keys.smallCapsLore, LimeFrameAPI.keys.smallCaps)
-        return GUISetting(rows, title, smallCapsTitle = fontTitle, smallCapsItemName = fontItemName, smallCapsItemLore = fontItemLore)
+        val stylishTitle = section.getBoolean(keys.stylishFontTitle, keys.stylishTitle)
+        val stylishName = section.getBoolean(keys.stylishFontName, keys.stylishName)
+        val stylishLore = section.getBoolean(keys.stylishFontLore, keys.stylishLore)
+        return GUISetting(rows, title, LimeStyleSheet(stylishTitle = stylishTitle, stylishName = stylishName, stylishLore = stylishLore))
     }
 
     fun saveInventory(path: String, inventory: Inventory, inventoryTitle: String = keys.defaultInventoryTitle): Boolean {
@@ -210,9 +213,8 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         section.set(keys.amount, item.amount)
         section.set(keys.unbreakable, item.unbreakable)
         section.set(keys.damage, item.damage)
-        item.smallCapsName?.let { section.set(keys.smallCapsName, it) }
-        item.smallCapsLore?.let { section.set(keys.smallCapsLore, it) }
-
+        item.styleSheet?.stylishName?.let { section.set(keys.stylishFontName, it) }
+        item.styleSheet?.stylishLore?.let { section.set(keys.stylishFontLore, it) }
         item.slot?.let { section.set(keys.slot, it) }
         if (item.slotList.isNotEmpty()) section.set(keys.slotList, item.slotList)
     }

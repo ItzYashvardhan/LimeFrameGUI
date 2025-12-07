@@ -72,10 +72,13 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
 
         val size = setting.rows * 9
         val title = setting.title.replace("{page}", id.toString())
-        val coloredTitle = FontStyle.applyStyle(title, setting)
+        val coloredTitle = setting.styleSheet?.let {
+            FontStyle.applyStyle(title, it, it.stylishTitle)
+        } ?: title
         val inv = Bukkit.createInventory(this, size, coloredTitle)
         pageInventories[id] = inv
         return inv
+
     }
 
     /**

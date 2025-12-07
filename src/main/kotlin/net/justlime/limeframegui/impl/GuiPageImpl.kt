@@ -33,10 +33,12 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
 
+    // For Nested Page Only
     override fun addPage(id: Int, setting: GUISetting, block: GUIPage.() -> Unit) {
         builder.addPage(id, setting, block)
     }
 
+    // For Nested Page Only
     override fun addPage(setting: GUISetting, block: GUIPage.() -> Unit) {
         builder.addPage(setting, block)
     }
@@ -49,7 +51,15 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         fun findFreeSlot(inv: Inventory): Int = (0 until inv.size).firstOrNull { it !in getReservedSlots(inv) && inv.getItem(it) == null } ?: -1
 
         // Apply placeholders from setting if not set
-        if (newItem.styleSheet == null) newItem.styleSheet = setting.styleSheet
+        if (newItem.styleSheet == null) {
+            newItem.styleSheet = setting.styleSheet
+        } else {
+            newItem.styleSheet?.let {
+                if (it.player == null) it.player = setting.styleSheet?.player
+                if (it.offlinePlayer == null) it.offlinePlayer = setting.styleSheet?.offlinePlayer
+                if (it.placeholder.isEmpty()) it.placeholder = setting.styleSheet?.placeholder ?: mutableMapOf()
+            }
+        }
 
         // Try current page
         findFreeSlot(inventory).takeIf { it != -1 }?.let { slot ->
@@ -108,6 +118,12 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
         if (index < inventory.size) {
             if (newItem.styleSheet == null) newItem.styleSheet = setting.styleSheet
+            newItem.styleSheet?.let {
+                if (it.player == null) it.player = setting.styleSheet?.player
+                if (it.offlinePlayer == null) it.offlinePlayer = setting.styleSheet?.offlinePlayer
+                if (it.placeholder.isEmpty()) it.placeholder = setting.styleSheet?.placeholder ?: mutableMapOf()
+            }
+
 
             inventory.setItem(index, newItem)
             handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[index] = { event ->

@@ -19,10 +19,12 @@ data class FrameConfigKeys(
     var slot: String = "slot",
     var slotList: String = "slots",
     var base64Data: String = "data",
-    var smallCapsTitle: String = "font-title",
-    var smallCapsName: String = "font-name",
-    var smallCapsLore: String = "font-lore",
-    var smallCaps: Boolean = false,//Set to try to use small caps font.
+    var stylishFontTitle: String = "font-title",
+    var stylishFontName: String = "font-name",
+    var stylishFontLore: String = "font-lore",
+    var stylishTitle: Boolean = false,//Set to try to use small caps font.
+    var stylishName: Boolean = false,
+    var stylishLore: Boolean = false,
 )
 
 

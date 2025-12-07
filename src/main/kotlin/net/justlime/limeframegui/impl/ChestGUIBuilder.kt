@@ -96,6 +96,7 @@ class ChestGUIBuilder(val setting: GUISetting) {
      * Throws an error if the ID is already in use or is the reserved global ID.
      */
     fun addPage(id: Int, setting: GUISetting = this.setting, block: GUIPage.() -> Unit) {
+        if (setting.styleSheet == null) setting.styleSheet = this.setting.styleSheet
         val runBlock = {
             if (LimeFrameAPI.debugging) println("Starting Execution of Page $id")
             if (id == ChestGUI.GLOBAL_PAGE) throw IllegalArgumentException("Cannot overwrite the global page (ID 0).")
@@ -113,12 +114,11 @@ class ChestGUIBuilder(val setting: GUISetting) {
             if (LimeFrameAPI.debugging) println("Queued Page $id")
         }
     }
-
     /**
      * Adds a page with an automatically assigned, incremental ID. This is the recommended approach.
      */
     fun addPage(setting: GUISetting = this.setting, block: GUIPage.() -> Unit) {
-
+        if (setting.styleSheet == null) setting.styleSheet = this.setting.styleSheet
         val runBlock = {
             val newId = (pages.keys.maxOrNull() ?: ChestGUI.GLOBAL_PAGE) + 1
             if (LimeFrameAPI.debugging) println("Starting Execution of Page $newId")

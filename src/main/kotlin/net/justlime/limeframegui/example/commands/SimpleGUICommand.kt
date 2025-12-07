@@ -49,7 +49,7 @@ class SimpleGUICommand() : CommandHandler {
             }
 
             "formatted" -> {
-                formattedPage(Example.setting, sender)
+                formattedPage(Example.setting.copy(), sender)
             }
 
             "formatted2" -> {
@@ -285,9 +285,11 @@ class SimpleGUICommand() : CommandHandler {
 private object Example {
     var value = true
     val setting = GUISetting(6, "Example %betterteams_name%").apply {
-        this.smallCapsTitle = true //Enabled SmallCapsFont for title
-        this.smallCapsItemName = true //Enabled SmallCapsFont for item name
-        this.smallCapsItemLore = true //Enabled SmallCapsFont for item lore
+        this.styleSheet?.apply {
+            stylishName = true
+            stylishLore = true
+            stylishTitle = true
+        }
     }
 
 }
@@ -300,7 +302,7 @@ private object GuiManager {
 
 private fun formattedPage(setting: GUISetting, player: Player) {
 
-    setting.customPlaceholder = mapOf("{world}" to player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt())
+    setting.styleSheet?.placeholder = mapOf("{world}" to player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt())
     ChestGUI(setting) {
 
         val item3 = GuiItem(
@@ -350,17 +352,18 @@ private fun formattedPage(setting: GUISetting, player: Player) {
             val item2 = GuiItem(
                 material = Material.GOLD_INGOT, name = "Player: %betterteams_name%", lore = listOf(
                     "<gold>Balance: %vault_eco_balance%", "<white>Location: %player_x%, %player_y%, %player_z%"
-                ), smallCapsName = false, //You can turn On/Off certain small caps for particular item
-                smallCapsLore = false, glow = true
+                )
             )
 
             val item4 = GuiItem(
                 material = Material.TOTEM_OF_UNDYING, name = "<#FF00FF>Custom PlaceHolder</#FF00FF>", lore = listOf(
                     "<gray>World: {world}</gray>", "<gray>Location: {location}</gray>"
 
-                ), customPlaceholder = mapOf(
-                    "{world}" to player.world.name, "{location}" to "${player.location.x.toInt()}, ${player.location.y.toInt()}, ${player.location.z.toInt()}"
-                ), smallCapsName = false
+                ), styleSheet = setting.styleSheet?.copy(
+                    placeholder = mutableMapOf(
+                        "{world}" to player.world.name, "{location}" to "${player.location.x.toInt()}, ${player.location.y.toInt()}, ${player.location.z.toInt()}"
+                    )
+                )
             )
 
             val item5 = GuiItem(Material.PLAYER_HEAD, texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
@@ -372,8 +375,7 @@ private fun formattedPage(setting: GUISetting, player: Player) {
             }
 
             addItem(finalItem) { event ->
-                println(event.item?.name)
-                println(event.currentItem?.itemMeta?.displayName)
+                event.item =  if (Example.value) item3 else item31
                 event.update()
             }
 

@@ -101,13 +101,13 @@ data class GuiItem(
 
         // 4. Apply Display Name & Lore (with placeholders and colors)
         styleSheet?.let {
-            val finalName = FontStyle.applyStyle(currentName, it)
+            val finalName = FontStyle.applyStyle(currentName, it, it.stylishName)
             meta.setDisplayName(finalName)
         }
         styleSheet?.let {
             val rawLore = currentLore
             if (rawLore.isNotEmpty()) {
-                meta.lore = FontStyle.applyStyle(rawLore, it)
+                meta.lore = FontStyle.applyStyle(rawLore, it, it.stylishLore)
             }
         }
 
