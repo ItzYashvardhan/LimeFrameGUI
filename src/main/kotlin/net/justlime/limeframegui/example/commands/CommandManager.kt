@@ -1,4 +1,3 @@
-
 package net.justlime.limeframegui.example.commands
 
 import net.justlime.limeframegui.handle.CommandHandler

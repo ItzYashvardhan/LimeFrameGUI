@@ -7,17 +7,14 @@ import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.type.ChestGUI.Companion.GLOBAL_PAGE
 import net.justlime.limeframegui.utilities.item
-import net.justlime.limeframegui.utilities.setItem
 import net.justlime.limeframegui.utilities.toGuiItem
 import net.justlime.limeframegui.utilities.update
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
-import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.ClickType
-import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 
 class SimpleGUICommand() : CommandHandler {
@@ -35,6 +32,7 @@ class SimpleGUICommand() : CommandHandler {
             return true
         }
 
+
         when (args[0]) {
 
             "save" -> savePage(sender)
@@ -51,11 +49,11 @@ class SimpleGUICommand() : CommandHandler {
             }
 
             "formatted" -> {
-                formattedPage(sender)
+                formattedPage(Example.setting, sender)
             }
 
             "formatted2" -> {
-                formattedPage2(sender)
+                GuiManager.openFormattedGUI(sender)
             }
 
             else -> {}
@@ -282,121 +280,78 @@ class SimpleGUICommand() : CommandHandler {
 
     }
 
-    fun formattedPage(player: Player) {
+}
 
-        ChestGUI(6, "Formatted Page Example - %statistic_time_played%") {
+private object Example {
+    var value = true
+    val setting = GUISetting(6, "Example %betterteams_name%").apply {
+        this.smallCapsTitle = true //Enabled SmallCapsFont for title
+        this.smallCapsItemName = true //Enabled SmallCapsFont for item name
+        this.smallCapsItemLore = true //Enabled SmallCapsFont for item lore
+    }
 
-            setting.smallCapsTitle = true //Enabled SmallCapsFont for title
-            setting.smallCapsItemName = true //Enabled SmallCapsFont for item name
-            setting.smallCapsItemLore = true //Enabled SmallCapsFont for item lore
-            setting.placeholderPlayer = player
-            val item1 = GuiItem(
+}
+
+private object GuiManager {
+    fun openFormattedGUI(player: Player) {
+        formattedPage(Example.setting, player)
+    }
+}
+
+private fun formattedPage(setting: GUISetting, player: Player) {
+
+    setting.customPlaceholder = mapOf("{world}" to player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt())
+    ChestGUI(setting) {
+
+        val item3 = GuiItem(
+            material = Material.PLAYER_HEAD, name = "Player: %player_name%", lore = listOf(
+                "<green>Playtime Stats1: %statistic_time_played%", "<green>World: <white>{world}</white>", "<aqua>Click to refresh"
+            ), texture = "%player_name%"
+
+        )
+
+        val item31 = GuiItem(
+            material = Material.PLAYER_HEAD, name = "Player: %player_name%", lore = listOf(
+                "<green>Playtime Stats2: %statistic_time_played%", "<aqua>Click to refresh"
+            ), texture = "%player_name%"
+
+        )
+
+        val finalItem = if (Example.value) item3 else item31
+        Example.value = !Example.value
+
+        val item1 = GuiItem(
+            Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
+                "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
+            )
+        )
+
+        addItem(item1) {
+            it.whoClicked.sendMessage("Clicked formatted item!")
+        }
+
+        setItem(item1, 12) {
+            it.whoClicked.sendMessage("Clicked formatted item on ${it.slot}!")
+        }
+
+        onClick { it.isCancelled = true }
+        addPage {
+
+            val item12 = GuiItem(
                 Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
                     "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
                 )
             )
 
-            addItem(item1){
+            addItem(item12) {
                 it.whoClicked.sendMessage("Clicked formatted item!")
             }
 
-            setItem(item1,12){
-                it.whoClicked.sendMessage("Clicked formatted item on ${it.slot}!")
-            }
-
-            onClick { it.isCancelled = true }
-            addPage {
-
-                val item12 = GuiItem(
-                    Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
-                        "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
-                    )
-                )
-
-                addItem(item12) {
-                    it.whoClicked.sendMessage("Clicked formatted item!")
-                }
-
-                val item2 = GuiItem(
-                    material = Material.GOLD_INGOT, name = "Player: %player_name%", lore = listOf(
-                        "<gold>Balance: %vault_eco_balance%", "<white>Location: %player_x%, %player_y%, %player_z%"
-                    ), smallCapsName = false, //You can turn On/Off certain small caps for particular item
-                    smallCapsLore = false, glow = true
-                )
-
-                val item3 = GuiItem(
-                    material = Material.PLAYER_HEAD, name = "Player: {player}", lore = listOf(
-                        "<green>Playtime Stats: %statistic_time_played%", "<aqua>Click to refresh"
-                    ), texture = "{player}"
-                )
-
-                val item4 = GuiItem(
-                    material = Material.TOTEM_OF_UNDYING, name = "<#FF00FF>Custom PlaceHolder</#FF00FF>", lore = listOf(
-                        "<gray>World: {world}</gray>", "<gray>Location: {location}</gray>"
-
-                    ), customPlaceholder = mapOf(
-                        "{world}" to player.world.name, "{location}" to "${player.location.x.toInt()}, ${player.location.y.toInt()}, ${player.location.z.toInt()}"
-                    ), smallCapsName = false
-                )
-
-                val item5 =
-                    GuiItem(Material.PLAYER_HEAD, texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
-
-
-
-                addItem(item2) {
-                    it.whoClicked.sendMessage("Clicked player placeholder item!")
-                }
-
-                addItem(item3) { event ->
-                    println(event.item?.name)
-                    println(event.currentItem?.itemMeta?.displayName)
-                    event.inventory.setItem(event.slot, event.item)
-                }
-
-                addItem(item3) { event ->
-                    println(item3.name)
-                    event.inventory.setItem(event.slot, item3) //This may break things not recommended
-                }
-
-                addItem(item4)
-                addItem(item5)
-            }
-        }.open(player)
-
-    }
-
-    fun formattedPage2(player: Player) {
-        println("Function Called")
-
-        ChestGUI(6, "Formatted Page Example - %statistic_time_played%") {
-
-            println("UI Called")
-
-            setting.smallCapsTitle = true //Enabled SmallCapsFont for title
-            setting.smallCapsItemName = true //Enabled SmallCapsFont for item name
-            setting.smallCapsItemLore = true //Enabled SmallCapsFont for item lore
-            setting.placeholderPlayer = player
-
-            onClick { it.isCancelled = true }
-
-            val item1 = GuiItem(
-                Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
-                    "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
-                )
-            )
-
             val item2 = GuiItem(
-                material = Material.GOLD_INGOT, name = "Player: %player_name%", lore = listOf(
+                material = Material.GOLD_INGOT, name = "Player: %betterteams_name%", lore = listOf(
                     "<gold>Balance: %vault_eco_balance%", "<white>Location: %player_x%, %player_y%, %player_z%"
                 ), smallCapsName = false, //You can turn On/Off certain small caps for particular item
                 smallCapsLore = false, glow = true
-            )
-
-            val item3 = GuiItem(
-                material = Material.PLAYER_HEAD, name = "Player: {player}", lore = listOf(
-                    "<green>Playtime Stats: %statistic_time_played%", "<aqua>Click to refresh"
-                ), texture = "{player}"
             )
 
             val item4 = GuiItem(
@@ -410,30 +365,22 @@ class SimpleGUICommand() : CommandHandler {
 
             val item5 = GuiItem(Material.PLAYER_HEAD, texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
 
-            addItem(item1) {
-                it.whoClicked.sendMessage("Clicked formatted item!")
-            }
+
 
             addItem(item2) {
                 it.whoClicked.sendMessage("Clicked player placeholder item!")
             }
 
-            addItem(item3) { event ->
+            addItem(finalItem) { event ->
                 println(event.item?.name)
                 println(event.currentItem?.itemMeta?.displayName)
-                event.inventory.setItem(event.slot, event.item)
-            }
-
-            addItem(item3) { event ->
-                println(item3.name)
-                event.inventory.setItem(event.slot, item3) //This may break things not recommended
+                event.update()
             }
 
             addItem(item4)
             addItem(item5)
-
-        }.open(player)
-
-    }
+        }
+    }.open(player)
 
 }
+

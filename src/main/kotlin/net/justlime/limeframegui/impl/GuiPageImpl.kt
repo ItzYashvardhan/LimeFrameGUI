@@ -54,6 +54,7 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         if (newItem.placeholderOfflinePlayer == null) newItem.placeholderOfflinePlayer = setting.placeholderOfflinePlayer
         if (newItem.smallCapsName == null) newItem.smallCapsName = setting.smallCapsItemName
         if (newItem.smallCapsLore == null) newItem.smallCapsLore = setting.smallCapsItemLore
+        if (newItem.customPlaceholder.isEmpty()) newItem.customPlaceholder = setting.customPlaceholder
 
         // Try current page
         findFreeSlot(inventory).takeIf { it != -1 }?.let { slot ->
@@ -115,6 +116,7 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
             if (newItem.placeholderOfflinePlayer == null) newItem.placeholderOfflinePlayer = setting.placeholderOfflinePlayer
             if (newItem.smallCapsName == null) newItem.smallCapsName = setting.smallCapsItemName
             if (newItem.smallCapsLore == null) newItem.smallCapsLore = setting.smallCapsItemLore
+            if (newItem.customPlaceholder.isEmpty()) newItem.customPlaceholder = setting.customPlaceholder
             inventory.setItem(index, newItem)
             handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[index] = { event ->
                 event.item = newItem

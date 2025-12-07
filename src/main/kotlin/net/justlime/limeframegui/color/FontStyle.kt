@@ -71,7 +71,7 @@ object FontStyle {
         return applyStyle(text, setting.placeholderPlayer, setting.placeholderOfflinePlayer, setting.smallCapsTitle, setting.customPlaceholder)
     }
 
-    fun applyStyle(text: List<String>, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = null): List<String> {
+    fun applyStyle(text: List<String>, player: Player? = null, offlinePlayer: OfflinePlayer? = null, smallCaps: Boolean? = false, customPlaceholders: Map<String, String>? = mutableMapOf()): List<String> {
         return text.map { applyStyle(it, player, offlinePlayer, smallCaps, customPlaceholders) }
     }
 

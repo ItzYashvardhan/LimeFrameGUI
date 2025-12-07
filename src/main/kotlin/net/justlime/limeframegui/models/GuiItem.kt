@@ -61,7 +61,7 @@ data class GuiItem(
     // Placeholder & Dynamic Content
     val nameState: (() -> String)? = null,
     val loreState: (() -> List<String>)? = null,
-    var customPlaceholder: Map<String, String>? = null,
+    var customPlaceholder: Map<String, String> = mutableMapOf(),
     var placeholderPlayer: Player? = null,
     var placeholderOfflinePlayer: OfflinePlayer? = null,
     var smallCapsName: Boolean? = null,
@@ -135,17 +135,25 @@ data class GuiItem(
         }
 
         // 6. Apply Item Flags
-        if (flags.isNotEmpty()) { meta.addItemFlags(*flags.toTypedArray()) }
+        if (flags.isNotEmpty()) {
+            meta.addItemFlags(*flags.toTypedArray())
+        }
 
         // 7. Custom Model Data
-        if (customModelData != null) { meta.setCustomModelData(customModelData) }
+        if (customModelData != null) {
+            meta.setCustomModelData(customModelData)
+        }
 
         // 8. Enchantments
-        if (enchantments.isNotEmpty()) { enchantments.forEach { (ench, lvl) -> meta.addEnchant(ench, lvl, true) } }
+        if (enchantments.isNotEmpty()) {
+            enchantments.forEach { (ench, lvl) -> meta.addEnchant(ench, lvl, true) }
+        }
 
         // 9. Unbreakable & Damage
         meta.isUnbreakable = unbreakable
-        if (damage != null && meta is Damageable) { meta.damage = damage!! }
+        if (damage != null && meta is Damageable) {
+            meta.damage = damage!!
+        }
 
         item.itemMeta = meta
         return item
@@ -208,7 +216,7 @@ data class GuiItem(
      */
     fun clone(): GuiItem {
         return this.copy(
-            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), customPlaceholder = this.customPlaceholder?.toMap(), baseItemStack = this.baseItemStack?.clone()
+            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), customPlaceholder = this.customPlaceholder.toMap(), baseItemStack = this.baseItemStack?.clone()
         )
     }
 }

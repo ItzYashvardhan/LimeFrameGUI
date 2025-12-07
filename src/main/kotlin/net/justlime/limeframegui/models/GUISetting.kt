@@ -10,7 +10,7 @@ data class GUISetting(
     var title: String,
     var placeholderPlayer: Player? = null,
     var placeholderOfflinePlayer: OfflinePlayer? = null,
-    var customPlaceholder: Map<String, String>? = null,
+    var customPlaceholder: Map<String, String> = mutableMapOf(),
     var smallCapsTitle: Boolean? = LimeFrameAPI.keys.smallCaps,
     var smallCapsItemName: Boolean? = LimeFrameAPI.keys.smallCaps,
     var smallCapsItemLore: Boolean? = LimeFrameAPI.keys.smallCaps,
