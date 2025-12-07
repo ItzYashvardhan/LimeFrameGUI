@@ -203,12 +203,13 @@ data class GuiItem(
 
     fun getItemStack(): ItemStack? = baseItemStack
 
+
     /**
      * Creates a deep copy of the GuiItem.
      */
     fun clone(): GuiItem {
         return this.copy(
-            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), styleSheet = this.styleSheet, baseItemStack = this.baseItemStack?.clone()
+            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), styleSheet = this.styleSheet?.copy(), baseItemStack = this.baseItemStack?.clone()
         )
     }
 }

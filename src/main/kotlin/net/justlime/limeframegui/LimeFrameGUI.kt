@@ -5,6 +5,7 @@ import net.justlime.limeframegui.enums.ColorType
 import net.justlime.limeframegui.example.commands.CommandManager
 import org.bukkit.plugin.java.JavaPlugin
 
+/** Using it for just testing*/
 class LimeFrameGUI : JavaPlugin() {
 
     override fun onEnable() {
@@ -14,7 +15,8 @@ class LimeFrameGUI : JavaPlugin() {
         LimeFrameAPI.setKeys {
             stylishTitle = true;
             stylishName = true;
-            stylishLore = false }
+            stylishLore = false
+        }
         LimeFrameAPI.debugging = false
     }
 

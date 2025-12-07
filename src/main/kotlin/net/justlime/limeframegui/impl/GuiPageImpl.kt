@@ -45,7 +45,7 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
 
-        //This way it can prevent item from overriding
+        //It is used to prevent item from overriding
         val newItem = item.clone()
 
         fun findFreeSlot(inv: Inventory): Int = (0 until inv.size).firstOrNull { it !in getReservedSlots(inv) && inv.getItem(it) == null } ?: -1

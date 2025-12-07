@@ -65,7 +65,7 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
      * The base Inventory of Page. It means its content will copy to all pages.
      */
     override fun getInventory(): Inventory {
-        return pageInventories[ChestGUI.GLOBAL_PAGE] ?: createPageInventory(ChestGUI.GLOBAL_PAGE, setting)
+        return pageInventories[ChestGUI.GLOBAL_PAGE_ID] ?: createPageInventory(ChestGUI.GLOBAL_PAGE_ID, setting)
     }
 
     override fun createPageInventory(id: Int, setting: GUISetting): Inventory {

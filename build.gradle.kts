@@ -5,7 +5,7 @@ plugins {
     `maven-publish`
 }
 
-group = "net.justlime"
+group = "net.justlime.limeframegui"
 version = "1.0.0"
 
 repositories {
