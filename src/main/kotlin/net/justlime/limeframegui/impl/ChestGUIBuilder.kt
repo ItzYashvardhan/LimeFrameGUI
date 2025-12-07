@@ -19,7 +19,9 @@ import org.bukkit.inventory.Inventory
  * Its job is to exist before any player interacts with the GUI.
  * Use it to define the layout, the pages, and the rules. It's like an architect's blueprint for a house.
  */
-class ChestGUIBuilder(val setting: GUISetting) {
+class ChestGUIBuilder(originalSetting: GUISetting) {
+
+    val setting: GUISetting = originalSetting.clone()
 
     /**
      * The lazy-loading store. All items that don't fit on manually-defined
@@ -113,6 +115,7 @@ class ChestGUIBuilder(val setting: GUISetting) {
             if (LimeFrameAPI.debugging) println("Queued Page $id")
         }
     }
+
     /**
      * Adds a page with an automatically assigned, incremental ID. This is the recommended approach.
      */
@@ -145,7 +148,9 @@ class ChestGUIBuilder(val setting: GUISetting) {
         val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] ?: return newPage
 
         globalPage.inventory.contents.forEachIndexed { index, item ->
-            if (item != null){ newPage.inventory.setItem(index, item) }
+            if (item != null) {
+                newPage.inventory.setItem(index, item)
+            }
         }
 
         // Copy item click handlers from the global page to the new page.

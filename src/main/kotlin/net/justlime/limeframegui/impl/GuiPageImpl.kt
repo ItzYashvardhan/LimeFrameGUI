@@ -6,8 +6,6 @@ import net.justlime.limeframegui.handle.GUIPage
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.utilities.item
-import net.justlime.limeframegui.utilities.setItem
-import net.justlime.limeframegui.utilities.toGuiItem
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryCloseEvent
@@ -20,15 +18,12 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override var inventory = handler.createPageInventory(currentPage, setting)
 
+    val itemCache = mutableMapOf<Int, GuiItem>()
+
     override val contents: MutableList<GuiItem?> = mutableListOf() //TODO
 
     override fun getItems(): Map<Int, GuiItem> {
-        val items = mutableMapOf<Int, GuiItem>()
-        for (i in 0 until inventory.contents.size) {
-            val guiItem = inventory.getItem(i)?.toGuiItem() ?: continue
-            items[i] = guiItem
-        }
-        return items
+        return itemCache
     }
 
     override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
@@ -63,7 +58,10 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
         // Try current page
         findFreeSlot(inventory).takeIf { it != -1 }?.let { slot ->
-            inventory.setItem(slot, newItem)
+
+//            inventory.setItem(slot, newItem)
+            itemCache[slot] = newItem
+
             trackAddItemSlot[slot] = newItem to onClick
             handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[slot] = { event ->
                 event.item = newItem
@@ -88,7 +86,10 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         // Try next existing page if available
         handler.pageInventories[nextPageId]?.let { inv ->
             findFreeSlot(inv).takeIf { it != -1 }?.let { slot ->
-                inv.setItem(slot, newItem)
+//                inv.setItem(slot, newItem)
+
+                (builder.pages[nextPageId] as? GuiPageImpl)?.itemCache?.set(slot, newItem)
+
                 builder.pages[nextPageId]?.trackAddItemSlot[slot] = newItem to onClick
                 handler.itemClickHandler.computeIfAbsent(nextPageId) { mutableMapOf() }[slot] = onClick
                 return slot
@@ -124,8 +125,10 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
                 if (it.placeholder.isEmpty()) it.placeholder = setting.styleSheet?.placeholder ?: mutableMapOf()
             }
 
+//            inventory.setItem(index, newItem)
+            itemCache[index] = newItem
 
-            inventory.setItem(index, newItem)
+
             handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[index] = { event ->
                 event.item = newItem
                 newItem.onClick(event)
@@ -144,6 +147,9 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         if (builder.pages[currentPage]?.trackAddItemSlot?.containsKey(slot) != true) {
             // If not, just clear the slot and do nothing else.
             inventory.setItem(slot, null)
+
+            itemCache.remove(slot)
+
             handler.itemClickHandler[currentPage]?.remove(slot)
             return this
         }
@@ -187,7 +193,11 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         dynamicItems.lastOrNull()?.let { lastItemLocation ->
             val (lastItemPageId, lastItemSlot) = lastItemLocation
             val lastItemPage = builder.pages[lastItemPageId]
+
             lastItemPage?.inventory?.setItem(lastItemSlot, null)
+
+            (lastItemPage as? GuiPageImpl)?.itemCache?.remove(lastItemSlot)
+
             handler.itemClickHandler[lastItemPageId]?.remove(lastItemSlot)
             lastItemPage?.trackAddItemSlot?.remove(lastItemSlot)
         }

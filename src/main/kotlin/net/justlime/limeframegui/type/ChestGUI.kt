@@ -1,51 +1,41 @@
 package net.justlime.limeframegui.type
 
-import net.justlime.limeframegui.handle.GUIEventHandler
 import net.justlime.limeframegui.impl.ChestGUIBuilder
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.LimeStyleSheet
+import net.justlime.limeframegui.session.GuiSession
 import org.bukkit.entity.Player
-import org.bukkit.inventory.Inventory
 
 /**
- * Initializes a new ChestGUI instance using a builder pattern.
- *
- * @param newSetting The settings for the GUI, including rows, title, and optional player for placeholders.
+ * The Blueprint class.
+ * * This class DOES NOT hold any active inventories or listeners.
+ * It simply holds the configuration (rows, title, builder block).
+ * * When you call open(), it spins up a new [GuiSession].
  */
-class ChestGUI(val setting: GUISetting, private val block: ChestGUIBuilder.() -> Unit = {}) {
+class ChestGUI(val setting: GUISetting, val block: ChestGUIBuilder.() -> Unit = {}) {
+
+    // Convenience constructor
     constructor(row: Int, title: String, block: ChestGUIBuilder.() -> Unit = {}) : this(GUISetting(row, title), block)
-    val newSetting = this.setting.clone()
-
-    
-
-    private lateinit var guiHandler: GUIEventHandler
-    private lateinit var pages: MutableMap<Int, Inventory>
-    var minPageId: Int = GLOBAL_PAGE_ID
-
-    fun build() {
-        if (this::guiHandler.isInitialized) return
-        val builder = ChestGUIBuilder(newSetting)
-        builder.apply(block)
-        this.guiHandler = builder.build()
-        pages = guiHandler.pageInventories
-        minPageId = pages.keys.filter { it != GLOBAL_PAGE_ID }.minOrNull() ?: 0
-    }
 
     /**
      * Opens the GUI for a specific player.
-     * @param player The player to open the GUI for.
-     * @param page The page number to open to.
+     * * This creates a new independent Session, ensuring:
+     * 1. Placeholders are parsed specifically for this player.
+     * 2. No data leaks between players (Multiplayer Safe).
      */
-    fun open(player: Player, page: Int? = null) {
-        if (newSetting.styleSheet == null) newSetting.styleSheet = LimeStyleSheet(player)
-        if (newSetting.styleSheet?.player == null && newSetting.styleSheet?.offlinePlayer == null) {
-            newSetting.styleSheet?.player = player
-            build()
-            guiHandler.open(player, page ?: minPageId)
-            return
+    fun open(player: Player, page: Int = GLOBAL_PAGE_ID) {
+
+        // 1. Prepare the Style Context for this session
+        val context = setting.styleSheet?.copy() ?: LimeStyleSheet()
+
+        // Ensure the viewer is bound to the stylesheet
+        if (context.player == null) {
+            context.player = player
         }
-        build()
-        guiHandler.open(player, page ?: minPageId)
+
+        // 2. Start the Session
+        // We pass 'this' (the blueprint) and the 'context' (the player).
+        GuiSession(this, context).start(page)
     }
 
     companion object {
