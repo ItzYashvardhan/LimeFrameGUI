@@ -56,12 +56,10 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
             return nextFreeSlot
         }
 
-        // 3. Create New Page (If current is full)
+        //Create New Page (If current is full)
         var resultSlot = -1
         builder.addPage(setting) {
             trackGuiPage = this
-            // BUG FIX 2: Add the item to the new page immediately!
-            // In your old code, you returned -1 and dropped the item.
             resultSlot = this.addItem(newItem, onClick)
         }
         return resultSlot
