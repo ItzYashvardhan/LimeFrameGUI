@@ -1,7 +1,7 @@
 package net.justlime.limeframegui.impl
 
 import net.justlime.limeframegui.color.FontStyle
-import net.justlime.limeframegui.handle.GUIEventHandler
+import net.justlime.limeframegui.handler.GUIEventHandler
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.utilities.FrameAdapter
@@ -72,9 +72,8 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
 
         val size = setting.rows * 9
         val title = setting.title.replace("{page}", id.toString())
-        val coloredTitle = setting.styleSheet?.let {
-            FontStyle.applyStyle(title, it, it.stylishTitle)
-        } ?: title
+        val coloredTitle = FontStyle.applyStyle(title, setting.style, setting.style.stylishTitle)
+
         val inv = Bukkit.createInventory(this, size, coloredTitle)
         pageInventories[id] = inv
         return inv

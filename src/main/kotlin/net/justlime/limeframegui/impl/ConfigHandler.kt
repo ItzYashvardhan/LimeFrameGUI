@@ -66,7 +66,7 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
                 slotList = getIntegerList(keys.slotList),
                 unbreakable = getBoolean(keys.unbreakable, false),
                 damage = takeIf { contains(keys.damage) }?.getInt(keys.damage),
-                styleSheet = LimeStyleSheet(
+                style = LimeStyleSheet(
                     stylishName = takeIf { contains(keys.stylishFontName) }?.getBoolean(keys.stylishFontName) ?: keys.stylishName,
                     stylishLore = takeIf { contains(keys.stylishFontLore) }?.getBoolean(keys.stylishFontLore) ?: keys.stylishLore,
                 ),
@@ -213,8 +213,8 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         section.set(keys.amount, item.amount)
         section.set(keys.unbreakable, item.unbreakable)
         section.set(keys.damage, item.damage)
-        item.styleSheet?.stylishName?.let { section.set(keys.stylishFontName, it) }
-        item.styleSheet?.stylishLore?.let { section.set(keys.stylishFontLore, it) }
+        item.style?.stylishName?.let { section.set(keys.stylishFontName, it) }
+        item.style?.stylishLore?.let { section.set(keys.stylishFontLore, it) }
         item.slot?.let { section.set(keys.slot, it) }
         if (item.slotList.isNotEmpty()) section.set(keys.slotList, item.slotList)
     }

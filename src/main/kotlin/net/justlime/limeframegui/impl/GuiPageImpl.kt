@@ -1,8 +1,7 @@
 package net.justlime.limeframegui.impl
 
-import net.justlime.limeframegui.api.LimeFrameAPI
-import net.justlime.limeframegui.handle.GUIEventHandler
-import net.justlime.limeframegui.handle.GUIPage
+import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.handler.GuiPage
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.utilities.item
@@ -12,99 +11,60 @@ import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.inventory.Inventory
 
-class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHandler, override val currentPage: Int, private val setting: GUISetting) : GUIPage {
+class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHandler, override val currentPage: Int, private val setting: GUISetting) : GuiPage {
 
     private var trackPageId = currentPage
+    private var trackGuiPage: GuiPage = this
 
     override var inventory = handler.createPageInventory(currentPage, setting)
 
-    val itemCache = mutableMapOf<Int, GuiItem>()
+    override val itemCache = mutableMapOf<Int, GuiItem>()
 
-    override val contents: MutableList<GuiItem?> = mutableListOf() //TODO
-
-    override fun getItems(): Map<Int, GuiItem> {
-        return itemCache
-    }
+    override fun getItems(): Map<Int, GuiItem> = itemCache
 
     override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
 
     // For Nested Page Only
-    override fun addPage(id: Int, setting: GUISetting, block: GUIPage.() -> Unit) {
-        builder.addPage(id, setting, block)
-    }
+    override fun addPage(id: Int, setting: GUISetting, block: GuiPage.() -> Unit) = builder.addPage(id, setting, block)
 
     // For Nested Page Only
-    override fun addPage(setting: GUISetting, block: GUIPage.() -> Unit) {
-        builder.addPage(setting, block)
-    }
+    override fun addPage(setting: GUISetting, block: GuiPage.() -> Unit) = builder.addPage(setting, block)
 
     override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
-
-        //It is used to prevent item from overriding
         val newItem = item.clone()
+        newItem.applyStyleSheet()
 
-        fun findFreeSlot(inv: Inventory): Int = (0 until inv.size).firstOrNull { it !in getReservedSlots(inv) && inv.getItem(it) == null } ?: -1
-
-        // Apply placeholders from setting if not set
-        if (newItem.styleSheet == null) {
-            newItem.styleSheet = setting.styleSheet
-        } else {
-            newItem.styleSheet?.let {
-                if (it.player == null) it.player = setting.styleSheet?.player
-                if (it.offlinePlayer == null) it.offlinePlayer = setting.styleSheet?.offlinePlayer
-                if (it.placeholder.isEmpty()) it.placeholder = setting.styleSheet?.placeholder ?: mutableMapOf()
+        //Handle for single page (Global Page) or nav is disabled
+        if (builder.pages.size == 1 || !builder.reservedSlot.enableNavSlotReservation) {
+            val freeSlot = findFreeSlot(itemCache)
+            if (freeSlot != -1) {
+                itemCache[freeSlot] = newItem
+                registerClickEvent(newItem, freeSlot, onClick)
             }
+            return freeSlot
         }
 
-        // Try current page
-        findFreeSlot(inventory).takeIf { it != -1 }?.let { slot ->
+        //Handle for Pagination
+        val currentPage = trackGuiPage
+        val currentImpl = currentPage as? GuiPageImpl ?: return -1
+        val nextFreeSlot = currentImpl.findFreeSlot(currentImpl.itemCache)
 
-//            inventory.setItem(slot, newItem)
-            itemCache[slot] = newItem
-
-            trackAddItemSlot[slot] = newItem to onClick
-            handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[slot] = { event ->
-                event.item = newItem
-                newItem.onClick(event)
-                onClick(event)
-            }
-            return slot
+        if (nextFreeSlot != -1) {
+            currentImpl.itemCache[nextFreeSlot] = newItem
+            currentImpl.trackAddItemSlot[nextFreeSlot] = newItem to onClick
+            currentImpl.registerClickEvent(newItem, nextFreeSlot, onClick)
+            return nextFreeSlot
         }
 
-
-        // Find an unused page ID greater than current
-        fun findNextPageId(start: Int): Int {
-            var id = start
-            while (handler.pageInventories.containsKey(id)) {
-                id++
-            }
-            return id
+        // 3. Create New Page (If current is full)
+        var resultSlot = -1
+        builder.addPage(setting) {
+            trackGuiPage = this
+            // BUG FIX 2: Add the item to the new page immediately!
+            // In your old code, you returned -1 and dropped the item.
+            resultSlot = this.addItem(newItem, onClick)
         }
-
-        val nextPageId = trackPageId
-
-        // Try next existing page if available
-        handler.pageInventories[nextPageId]?.let { inv ->
-            findFreeSlot(inv).takeIf { it != -1 }?.let { slot ->
-//                inv.setItem(slot, newItem)
-
-                (builder.pages[nextPageId] as? GuiPageImpl)?.itemCache?.set(slot, newItem)
-
-                builder.pages[nextPageId]?.trackAddItemSlot[slot] = newItem to onClick
-                handler.itemClickHandler.computeIfAbsent(nextPageId) { mutableMapOf() }[slot] = onClick
-                return slot
-            }
-        }
-
-        // Create new page and add the item there
-        var newSlot = -1
-        val newPageId = findNextPageId(nextPageId)
-        trackPageId = newPageId
-        if (LimeFrameAPI.debugging) println("Creating NewPage $trackPageId")
-        addPage(trackPageId, setting) {
-            newSlot = addItem(newItem, onClick)
-        }
-        return newSlot
+        return resultSlot
     }
 
     override fun addItem(items: List<GuiItem>, onClick: ((GuiItem, InventoryClickEvent) -> Unit)) {
@@ -114,34 +74,17 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
     }
 
     override fun setItem(index: Int, item: GuiItem, onClick: ((InventoryClickEvent) -> Unit)): Int {
-
         val newItem = item.clone()
-
         if (index < inventory.size) {
-            if (newItem.styleSheet == null) newItem.styleSheet = setting.styleSheet
-            newItem.styleSheet?.let {
-                if (it.player == null) it.player = setting.styleSheet?.player
-                if (it.offlinePlayer == null) it.offlinePlayer = setting.styleSheet?.offlinePlayer
-                if (it.placeholder.isEmpty()) it.placeholder = setting.styleSheet?.placeholder ?: mutableMapOf()
-            }
-
-//            inventory.setItem(index, newItem)
+            newItem.applyStyleSheet()
             itemCache[index] = newItem
-
-
-            handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[index] = { event ->
-                event.item = newItem
-                newItem.onClick(event)
-                onClick(event)
-            }
-
+            registerClickEvent(newItem, index, onClick)
             return index
         }
         return -1
-
     }
 
-    override fun remove(slot: Int): GUIPage {
+    override fun remove(slot: Int): GuiPage {
 
         // Ensure the item being removed is a dynamically added one on the current page.
         if (builder.pages[currentPage]?.trackAddItemSlot?.containsKey(slot) != true) {
@@ -204,7 +147,7 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         return this
     }
 
-    override fun remove(slotList: List<Int>): GUIPage {
+    override fun remove(slotList: List<Int>): GuiPage {
         // Sort descending to avoid index shifting issues when removing multiple items.
         slotList.sortedDescending().forEach { remove(it) }
         return this
@@ -231,31 +174,73 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         handler.open(player, id)
     }
 
+    private fun GuiItem.applyStyleSheet() {
+        if (this.style.isEmpty()) {
+            this.style = setting.style
+        } else {
+            this.style.let {
+                if (it.player == null) it.player = setting.style.player
+                if (it.offlinePlayer == null) it.offlinePlayer = setting.style.offlinePlayer
+                if (it.placeholder.isEmpty()) it.placeholder = setting.style.placeholder
+            }
+        }
+    }
+
+    // FIX: Loop until 'inventory.size' (54), NOT 'contents.size'
+    private fun findFreeSlot(contents: Map<Int, GuiItem>): Int {
+        val reserved = getReservedSlots(inventory) // Ensure we don't overwrite nav buttons
+
+        for (i in 0 until inventory.size) { // <--- CHANGE THIS LINE
+
+            // Check 1: Is this slot reserved for Navigation/Border?
+            if (i in reserved) continue
+
+            // Check 2: Is this slot empty in the cache?
+            if (!contents.containsKey(i)) {
+                return i
+            }
+        }
+        return -1
+    }
+
     private fun getReservedSlots(inventory: Inventory): Set<Int> {
         val lastSlot = inventory.size - 1
         val lastRowFirstSlot = lastSlot - 8
         val margin = builder.reservedSlot.navMargin
 
         return buildSet {
-            // Handle next page slot
-            if (builder.reservedSlot.nextPageSlot != -1) {
-                add(builder.reservedSlot.nextPageSlot)
-            } else if (builder.reservedSlot.enableNavSlotReservation) {
-                add(lastSlot - margin)
-                builder.reservedSlot.otherSlot.addAll(lastRowFirstSlot..lastSlot)
-            }
-
-            // Handle previous page slot
-            if (builder.reservedSlot.prevPageSlot != -1) {
-                add(builder.reservedSlot.prevPageSlot)
-            } else if (builder.reservedSlot.enableNavSlotReservation) {
-                add(lastRowFirstSlot + margin)
-                builder.reservedSlot.otherSlot.addAll(lastRowFirstSlot..lastSlot)
-            }
-
-            // Add other reserved slots like rows
+            // 1. Add explicitly reserved slots (from setItem, etc)
+            // We only READ from the builder. We do NOT write to it.
             addAll(builder.reservedSlot.otherSlot)
+
+            // 2. Calculate Navigation Slots dynamically
+            if (builder.reservedSlot.enableNavSlotReservation) {
+                // Next Page Area
+                if (builder.reservedSlot.nextPageSlot != -1) {
+                    add(builder.reservedSlot.nextPageSlot)
+                } else {
+                    add(lastSlot - margin)
+                    // Reserve the rest of the bottom-right row (corner)
+                    addAll((lastSlot - margin + 1)..lastSlot)
+                }
+
+                // Previous Page Area
+                if (builder.reservedSlot.prevPageSlot != -1) {
+                    add(builder.reservedSlot.prevPageSlot)
+                } else {
+                    add(lastRowFirstSlot + margin)
+                    // Reserve the rest of the bottom-left row (corner)
+                    addAll(lastRowFirstSlot until (lastRowFirstSlot + margin))
+                }
+            }
         }
     }
 
+    private fun registerClickEvent(item: GuiItem, slot: Int, onClick: (InventoryClickEvent) -> Unit) {
+        handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[slot] = { event ->
+            event.item = item
+            item.onClick(event)
+            onClick(event)
+        }
+    }
 }

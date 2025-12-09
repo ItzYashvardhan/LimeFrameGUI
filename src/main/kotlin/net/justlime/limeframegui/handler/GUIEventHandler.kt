@@ -1,4 +1,4 @@
-package net.justlime.limeframegui.handle
+package net.justlime.limeframegui.handler
 
 import net.justlime.limeframegui.models.GUISetting
 import org.bukkit.entity.Player
@@ -53,6 +53,8 @@ interface GUIEventHandler : InventoryHolder {
 
     fun setCurrentPage(player: Player, page: Int)
     fun getCurrentPage(player: Player): Int?
+
+    /** Creates an empty page inventory*/
     fun createPageInventory(id: Int, setting: GUISetting): Inventory
 
 

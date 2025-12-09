@@ -2,6 +2,7 @@ package net.justlime.limeframegui.session
 
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.impl.ChestGUIBuilder
+import net.justlime.limeframegui.impl.GuiPageImpl
 import net.justlime.limeframegui.models.LimeStyleSheet
 import net.justlime.limeframegui.rendering.ItemRenderer
 import net.justlime.limeframegui.type.ChestGUI
@@ -20,20 +21,19 @@ class GuiSession(
     private val blueprint: ChestGUI, private val context: LimeStyleSheet
 ) {
 
-    // We ensure the context has a player attached, as a Session requires a viewer.
-    private val player = context.player ?: throw IllegalStateException("Cannot start a GuiSession without a player in the stylesheet context.")
+    private val player = context.player ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
 
     /**
      * Starts the session: Builds the menu and opens it for the player.
-     * @param initialPage The page ID to open first (default is usually 0).
+     * @param initialPage The page ID to open first.
      */
-    fun start(initialPage: Int = 0) {
+    fun start(initialPage: Int? = null) {
         val builder = ChestGUIBuilder(blueprint.setting)
         builder.apply(blueprint.block)
         val handler = builder.build()
 
-        // 1. Get reference to Global Page items (Page 0)
-        val globalPage = builder.pages[0]
+        // Get reference to Global Page (Page 0) - Safely cast to Impl to access specific fields
+        val globalPage = builder.pages[0] as? GuiPageImpl
 
         builder.pages.forEach { (pageId, guiPage) ->
 
@@ -41,18 +41,23 @@ class GuiSession(
             val size = blueprint.setting.rows * 9
             val styledInventory = Bukkit.createInventory(handler, size, styledTitle)
 
-            // --- FIX START: Copy Global Items ---
-            // If we are building Page 1, 2, etc., we must first paint the Global Items
+            // INHERITANCE LOGIC
+            // When building Page 1, 2, etc., paint Global Items FIRST
             if (pageId != 0 && globalPage != null) {
                 globalPage.getItems().forEach { (slot, guiItem) ->
-                    // Render global items using the current session context
-                    val globalStack = ItemRenderer.render(guiItem, context)
-                    styledInventory.setItem(slot, globalStack)
+
+                    // Only copy items that are STATIC (e.g.,Global Items, Nav Buttons).
+                    val isDynamic = globalPage.trackAddItemSlot.containsKey(slot)
+
+                    if (!isDynamic) {
+                        val globalStack = ItemRenderer.render(guiItem, context)
+                        styledInventory.setItem(slot, globalStack)
+                    }
                 }
             }
-            // --- FIX END ---
 
-            // 2. Now paint the Page-Specific items (These will overwrite global items if they clash)
+            // PAGE SPECIFIC LOGIC
+            // Paint the Page-Specific items (These will overwrite global items if they clash)
             guiPage.getItems().forEach { (slot, guiItem) ->
                 val finalItemStack = ItemRenderer.render(guiItem, context)
                 styledInventory.setItem(slot, finalItemStack)
@@ -62,19 +67,18 @@ class GuiSession(
             guiPage.inventory = styledInventory
         }
 
-        handler.open(player, initialPage)
+        // Smart Page Selection
+        val minPageId = if (builder.pages.size == 1) 0 else builder.pages.keys.filter { it != 0 }.minOrNull() ?: 1
+        val finalPageId = initialPage ?: minPageId
+        handler.open(player, finalPageId)
     }
+
     /**
      * Helper to process the Window Title with placeholders and colors.
      */
     private fun generateTitle(rawTitle: String, pageId: Int): String {
-        // 1. Handle {page} placeholder locally
-        val step1 = rawTitle.replace("{page}", pageId.toString())
-
-        // 2. Handle Colors, PAPI, and SmallCaps using your existing logic
-        // We use the 'context' (LimeStyleSheet) specific to this player.
-        return FontStyle.applyStyle(
-            step1, context, blueprint.setting.styleSheet?.stylishTitle ?: false // Fallback to blueprint setting
-        )
+        val title = rawTitle.replace("{page}", pageId.toString())
+        val useStylishFont = blueprint.setting.style?.stylishTitle ?: false
+        return FontStyle.applyStyle(title, context, useStylishFont)
     }
 }

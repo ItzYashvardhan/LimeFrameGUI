@@ -12,6 +12,11 @@ reflection = "2.1.21"
 adventure = "4.24.0"
 via_version = "5.4.2"
 
+# Test
+mockbukkit = "4.98.0"
+junit-jupiter = "5.10.2"
+#junit-jupiter-api = "6.0.1"
+
 
 [libraries]
 #Core
@@ -27,3 +32,8 @@ headdb = { module = "com.arcaniax:HeadDatabase-API", version.ref = "headdb" }
 annotation = {module = "org.jetbrains:annotations",version.ref = "annotaiton"}
 bstats = { module = "org.bstats:bstats-bukkit", version.ref = "bstats" }
 viaversion = {module = "com.viaversion:viaversion-api", version.ref = "via_version"}
+
+#Test
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+#junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter-api" }
+mockbukkit = { module = "com.github.MockBukkit:MockBukkit", version.ref = "mockbukkit" }

@@ -1,7 +1,7 @@
 package net.justlime.limeframegui.impl
 
 import net.justlime.limeframegui.api.LimeFrameAPI
-import net.justlime.limeframegui.handle.GUIEventHandler
+import net.justlime.limeframegui.handler.GUIEventHandler
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.type.ChestGUI
 import org.bukkit.Material

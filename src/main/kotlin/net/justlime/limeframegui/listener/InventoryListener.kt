@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.listener
 
-import net.justlime.limeframegui.handle.GUIEventHandler
+import net.justlime.limeframegui.handler.GUIEventHandler
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.inventory.InventoryClickEvent

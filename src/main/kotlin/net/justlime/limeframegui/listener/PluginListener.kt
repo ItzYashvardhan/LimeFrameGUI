@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.listener
 
-import net.justlime.limeframegui.handle.GUIEventHandler
+import net.justlime.limeframegui.handler.GUIEventHandler
 import net.justlime.limeframegui.utilities.FrameAdapter
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener

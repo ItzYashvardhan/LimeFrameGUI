@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.example.commands
 
-import net.justlime.limeframegui.handle.CommandHandler
+import net.justlime.limeframegui.handler.CommandHandler
 import net.justlime.limeframegui.impl.ConfigHandler
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
@@ -113,7 +113,6 @@ class SimpleGUICommand() : CommandHandler {
                     addItem(newItem) {
                         it.whoClicked.sendMessage("Removed Item at ${it.currentItem?.itemMeta?.displayName}")
                         remove(it.slot)
-
                     }
                 }
 
@@ -125,26 +124,25 @@ class SimpleGUICommand() : CommandHandler {
 
             setting.title = "Custom Page {page}"
             setting.rows = 3
-            addPage {
-                addItem(item3) {
-                    it.whoClicked.sendMessage("Clicked on Item 5 at page $currentPage")
-                }
-                addItem(item3) {
-                    it.whoClicked.sendMessage("Clicked on Item 6")
-                }
-            }
-
-            addPage(GUISetting(4, "Custom Page {page}")) {
-                addItem(item4) {
-                    it.whoClicked.sendMessage("Clicked on Item ${it.slot} at page $currentPage")
-                }
-                addItem(item3) {
-                    it.whoClicked.sendMessage("Clicked on Item ${it.slot} at page $currentPage")
-                }
-            }
+//            addPage {
+//                addItem(item3) {
+//                    it.whoClicked.sendMessage("Clicked on Item 5 at page $currentPage")
+//                }
+//                addItem(item3) {
+//                    it.whoClicked.sendMessage("Clicked on Item 6")
+//                }
+//            }
+//
+//            addPage(GUISetting(4, "Custom Page {page}")) {
+//                addItem(item4) {
+//                    it.whoClicked.sendMessage("Clicked on Item ${it.slot} at page $currentPage")
+//                }
+//                addItem(item3) {
+//                    it.whoClicked.sendMessage("Clicked on Item ${it.slot} at page $currentPage")
+//                }
+//            }
 
         }.open(player)
-        ChestGUI(6, "Pager GUI").open(player)
     }
 
     fun simpleGUI(): ChestGUI {
@@ -287,7 +285,7 @@ class SimpleGUICommand() : CommandHandler {
 private object Example {
     var value = true
     val setting = GUISetting(6, "Example %betterteams_name%").apply {
-        this.styleSheet?.apply {
+        this.style?.apply {
             stylishName = true
             stylishLore = true
             stylishTitle = true
@@ -304,7 +302,7 @@ private object GuiManager {
 
 private fun formattedPage(setting: GUISetting, player: Player) {
 
-    setting.styleSheet?.placeholder = mapOf("{world}" to player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt())
+    setting.style?.placeholder = mapOf("{world}" to player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt())
     ChestGUI(setting) {
 
         val item3 = GuiItem(
@@ -361,7 +359,7 @@ private fun formattedPage(setting: GUISetting, player: Player) {
                 material = Material.TOTEM_OF_UNDYING, name = "<#FF00FF>Custom PlaceHolder</#FF00FF>", lore = listOf(
                     "<gray>World: {world}</gray>", "<gray>Location: {location}</gray>"
 
-                ), styleSheet = setting.styleSheet?.copy(
+                ), style = setting.style.copy(
                     placeholder = mutableMapOf(
                         "{world}" to player.world.name, "{location}" to "${player.location.x.toInt()}, ${player.location.y.toInt()}, ${player.location.z.toInt()}"
                     )
@@ -385,7 +383,7 @@ private fun formattedPage(setting: GUISetting, player: Player) {
             addItem(item4)
             addItem(item5)
         }
-    }.open(player,1)
+    }.open(player, 1)
 
 }
 

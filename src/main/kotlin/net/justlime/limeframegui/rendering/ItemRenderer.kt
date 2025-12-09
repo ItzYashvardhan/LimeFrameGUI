@@ -13,12 +13,11 @@ object ItemRenderer {
     fun render(item: GuiItem, sessionContext: LimeStyleSheet): ItemStack {
         val tempItem = item.clone()
 
-        // 1. Start with the Session Context (Player, Global PAPI)
+        // Start with the Session Context (Player, Global PAPI)
         val finalContext = sessionContext.copy()
 
-        // 2. FIX: Merge Item-Specific Placeholders into the Session Context
-        // If the item has its own stylesheet (like your item4 with {world}), add those keys.
-        item.styleSheet?.let { itemContext ->
+        // Merge Item-Specific Placeholders into the Session Context
+        item.style?.let { itemContext ->
             val mergedPlaceholders = finalContext.placeholder.toMutableMap()
             mergedPlaceholders.putAll(itemContext.placeholder)
             finalContext.placeholder = mergedPlaceholders
@@ -27,8 +26,8 @@ object ItemRenderer {
             if (itemContext.offlinePlayer != null) finalContext.offlinePlayer = itemContext.offlinePlayer
         }
 
-        // 3. Apply the combined context
-        tempItem.styleSheet = finalContext
+        // Apply the combined context
+        tempItem.style = finalContext
 
         return tempItem.toItemStack()
     }

@@ -11,4 +11,8 @@ data class LimeStyleSheet(
     var stylishTitle: Boolean = LimeFrameAPI.keys.stylishTitle,
     var stylishName: Boolean = LimeFrameAPI.keys.stylishName,
     var stylishLore: Boolean = LimeFrameAPI.keys.stylishLore,
-)
+) {
+
+    fun isEmpty(): Boolean = player == null && offlinePlayer == null && placeholder.isEmpty() && stylishTitle == LimeFrameAPI.keys.stylishTitle && stylishName == LimeFrameAPI.keys.stylishName && stylishLore == LimeFrameAPI.keys.stylishLore
+
+}

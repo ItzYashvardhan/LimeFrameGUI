@@ -29,7 +29,7 @@ import java.util.*
  * @param damage The current damage/durability value of the item (0 = new).
  * @param slot Single slot index to place this item into.
  * @param slotList Multiple slot indices to place the same item in several slots.
- * @param styleSheet StyleSheet to display stylish and dynamic text (i.e, custom placeholder, small cap's font)
+ * @param style StyleSheet to display stylish and dynamic text (i.e, custom placeholder, small cap's font)
  * @param onClick Event callback invoked when this item is clicked in the GUI (TODO).
  */
 data class GuiItem(
@@ -56,7 +56,7 @@ data class GuiItem(
     // Placeholder & Dynamic Content
     val nameState: (() -> String)? = null,
     val loreState: (() -> List<String>)? = null,
-    var styleSheet: LimeStyleSheet? = null,
+    var style: LimeStyleSheet = LimeStyleSheet(),
 
     private var baseItemStack: ItemStack? = null,
 
@@ -100,11 +100,11 @@ data class GuiItem(
         }
 
         // 4. Apply Display Name & Lore (with placeholders and colors)
-        styleSheet?.let {
+        style.let {
             val finalName = FontStyle.applyStyle(currentName, it, it.stylishName)
             meta.setDisplayName(finalName)
         }
-        styleSheet?.let {
+        style.let {
             val rawLore = currentLore
             if (rawLore.isNotEmpty()) {
                 meta.lore = FontStyle.applyStyle(rawLore, it, it.stylishLore)
@@ -160,10 +160,10 @@ data class GuiItem(
         when {
             // Case A: {player} placeholder
             tex.equals("{player}", ignoreCase = true) -> {
-                styleSheet?.player?.let { p ->
+                style?.player?.let { p ->
                     if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = p.playerProfile
                     else meta.owningPlayer = p
-                } ?: styleSheet?.offlinePlayer?.let { op ->
+                } ?: style?.offlinePlayer?.let { op ->
                     meta.owningPlayer = op
                 }
             }
@@ -203,13 +203,12 @@ data class GuiItem(
 
     fun getItemStack(): ItemStack? = baseItemStack
 
-
     /**
      * Creates a deep copy of the GuiItem.
      */
     fun clone(): GuiItem {
         return this.copy(
-            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), styleSheet = this.styleSheet?.copy(), baseItemStack = this.baseItemStack?.clone()
+            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), style = this.style.copy(), baseItemStack = this.baseItemStack?.clone()
         )
     }
 }

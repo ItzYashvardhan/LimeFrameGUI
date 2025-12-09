@@ -1,6 +1,8 @@
 package net.justlime.limeframegui.utilities
 
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.LimeStyleSheet
+import net.justlime.limeframegui.rendering.ItemRenderer
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
@@ -14,7 +16,7 @@ private val clickEventItems = WeakHashMap<InventoryClickEvent, GuiItem?>()
 /**
  * Converts an [ItemStack] to a [GuiItem].
  *
- * This extension function extracts relevant properties from an [ItemStack] and its [ItemMeta]
+ * This extension function extracts relevant properties from an [ItemStack] and its [org.bukkit.inventory.meta.ItemMeta]
  * to create a [GuiItem] object. It handles display name, lore, glow effect, item flags,
  * custom model data, and skull textures for player heads.
  *
@@ -232,4 +234,12 @@ var InventoryClickEvent.item: GuiItem?
  */
 fun InventoryClickEvent.update() {
     this.inventory.setItem(this.slot, this.item)
+}
+
+/**
+ * Updates the item in the inventory at the clicked slot with the current state of the `item` property
+ * of this [InventoryClickEvent], applying the provided [LimeStyleSheet] for rendering.
+ */
+fun InventoryClickEvent.update(style: LimeStyleSheet) {
+    this.inventory.setItem(this.slot, ItemRenderer.render(this.item ?: return this.update(), style))
 }

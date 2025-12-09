@@ -39,6 +39,10 @@ dependencies {
     compileOnly(libs.papi)
     compileOnly(libs.viaversion)
 
+//    testImplementation(libs.junit.jupiter)
+//    testImplementation(libs.mockbukkit )
+//    testImplementation(kotlin("test"))
+//    testImplementation(libs.spigot)
 }
 
 

@@ -34,16 +34,16 @@ object FontStyle {
      * Always returns a String.
      * - Priority to [OfflinePlayer] if both player type given
      */
-    fun applyStyle(text: String, styleSheet: LimeStyleSheet, useStylishFont: Boolean): String {
+    fun applyStyle(text: String, style: LimeStyleSheet, useStylishFont: Boolean): String {
         var newText = text
 
-        val playerName = styleSheet.player?.name ?: styleSheet.offlinePlayer?.name
-        newText = newText.customPlaceholder(playerName, styleSheet.placeholder)
+        val playerName = style.player?.name ?: style.offlinePlayer?.name
+        newText = newText.customPlaceholder(playerName, style.placeholder)
 
         if (isPlaceholderAPIEnabled) {
             newText = when {
-                styleSheet.offlinePlayer != null -> PlaceholderAPI.setPlaceholders(styleSheet.offlinePlayer, newText)
-                styleSheet.player != null -> PlaceholderAPI.setPlaceholders(styleSheet.player, newText)
+                style.offlinePlayer != null -> PlaceholderAPI.setPlaceholders(style.offlinePlayer, newText)
+                style.player != null -> PlaceholderAPI.setPlaceholders(style.player, newText)
                 else -> newText
             }
         }
@@ -61,7 +61,7 @@ object FontStyle {
             }
         }
 
-        val smallCapsText = coloredText.toSmallCaps(styleSheet.player, useStylishFont)
+        val smallCapsText = coloredText.toSmallCaps(style.player, useStylishFont)
 
 
         return smallCapsText

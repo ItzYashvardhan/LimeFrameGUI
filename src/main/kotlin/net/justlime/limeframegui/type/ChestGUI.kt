@@ -23,19 +23,16 @@ class ChestGUI(val setting: GUISetting, val block: ChestGUIBuilder.() -> Unit = 
      * 1. Placeholders are parsed specifically for this player.
      * 2. No data leaks between players (Multiplayer Safe).
      */
-    fun open(player: Player, page: Int = GLOBAL_PAGE_ID) {
+    fun open(player: Player, page: Int? = null) {
 
-        // 1. Prepare the Style Context for this session
-        val context = setting.styleSheet?.copy() ?: LimeStyleSheet()
+        // Prepare the Style Context for this session
+        val context = setting.style?.copy() ?: LimeStyleSheet()
 
-        // Ensure the viewer is bound to the stylesheet
-        if (context.player == null) {
-            context.player = player
-        }
+        if (context.player == null) context.player = player
 
-        // 2. Start the Session
-        // We pass 'this' (the blueprint) and the 'context' (the player).
-        GuiSession(this, context).start(page)
+        // Start the Session for player).
+        val session = GuiSession(this, context)
+        session.start(page)
     }
 
     companion object {

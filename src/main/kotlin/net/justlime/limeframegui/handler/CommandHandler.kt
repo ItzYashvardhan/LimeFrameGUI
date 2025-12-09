@@ -1,4 +1,4 @@
-package net.justlime.limeframegui.handle
+package net.justlime.limeframegui.handler
 
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.TabCompleter
