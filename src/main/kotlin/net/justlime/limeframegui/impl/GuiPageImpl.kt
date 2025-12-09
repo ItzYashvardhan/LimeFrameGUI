@@ -13,7 +13,6 @@ import org.bukkit.inventory.Inventory
 
 class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHandler, override val currentPage: Int, private val setting: GUISetting) : GuiPage {
 
-    private var trackPageId = currentPage
     private var trackGuiPage: GuiPage = this
 
     override var inventory = handler.createPageInventory(currentPage, setting)
