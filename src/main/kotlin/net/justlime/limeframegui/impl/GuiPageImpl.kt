@@ -186,16 +186,13 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         }
     }
 
-    // FIX: Loop until 'inventory.size' (54), NOT 'contents.size'
     private fun findFreeSlot(contents: Map<Int, GuiItem>): Int {
-        val reserved = getReservedSlots(inventory) // Ensure we don't overwrite nav buttons
+        val reserved = getReservedSlots(inventory)
 
-        for (i in 0 until inventory.size) { // <--- CHANGE THIS LINE
+        for (i in 0 until inventory.size) {
 
-            // Check 1: Is this slot reserved for Navigation/Border?
             if (i in reserved) continue
 
-            // Check 2: Is this slot empty in the cache?
             if (!contents.containsKey(i)) {
                 return i
             }
@@ -209,18 +206,14 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
         val margin = builder.reservedSlot.navMargin
 
         return buildSet {
-            // 1. Add explicitly reserved slots (from setItem, etc)
-            // We only READ from the builder. We do NOT write to it.
             addAll(builder.reservedSlot.otherSlot)
 
-            // 2. Calculate Navigation Slots dynamically
             if (builder.reservedSlot.enableNavSlotReservation) {
                 // Next Page Area
                 if (builder.reservedSlot.nextPageSlot != -1) {
                     add(builder.reservedSlot.nextPageSlot)
                 } else {
                     add(lastSlot - margin)
-                    // Reserve the rest of the bottom-right row (corner)
                     addAll((lastSlot - margin + 1)..lastSlot)
                 }
 
