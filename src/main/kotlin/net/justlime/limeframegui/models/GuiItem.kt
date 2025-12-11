@@ -1,6 +1,7 @@
 package net.justlime.limeframegui.models
 
 import net.justlime.limeframegui.color.FontStyle
+import net.justlime.limeframegui.utilities.SkinFileHook
 import net.justlime.limeframegui.utilities.SkullProfileCache
 import net.justlime.limeframegui.utilities.SkullUtils
 import org.bukkit.Bukkit
@@ -190,11 +191,20 @@ data class GuiItem(
             // Case B: UUID string "[uuid]"
             tex.startsWith("[") && tex.endsWith("]") -> {
                 try {
-                    val uuid = UUID.fromString(tex.substring(1, tex.length - 1))
-                    val owner = Bukkit.getOfflinePlayer(uuid)
-                    if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = owner.playerProfile
-                    else meta.owningPlayer = owner
-                } catch (_: Exception) { /* Ignore malformed UUID */
+                    val uuidString = tex.substring(1, tex.length - 1)
+                    val uuid = UUID.fromString(uuidString)
+
+                    val fileTexture = SkinFileHook.getSkinByUUID(uuid)
+
+                    if (fileTexture != null) {
+                        SkullUtils.applySkin(meta, SkullProfileCache.getProfile(fileTexture))
+                    } else {
+                        val owner = Bukkit.getOfflinePlayer(uuid)
+                        if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = owner.playerProfile
+                        else meta.owningPlayer = owner
+                    }
+
+                } catch (_: Exception) {/* Ignore malformed UUID */
                 }
             }
             // Case C: Base64 Texture
