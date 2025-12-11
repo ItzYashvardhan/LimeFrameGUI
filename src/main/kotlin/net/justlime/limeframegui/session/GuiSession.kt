@@ -2,7 +2,6 @@ package net.justlime.limeframegui.session
 
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.impl.ChestGUIBuilder
-import net.justlime.limeframegui.impl.GuiPageImpl
 import net.justlime.limeframegui.models.LimeStyleSheet
 import net.justlime.limeframegui.rendering.ItemRenderer
 import net.justlime.limeframegui.type.ChestGUI
@@ -17,9 +16,7 @@ import org.bukkit.Bukkit
  * 2. Rendering items with Player-Specific placeholders.
  * 3. Connecting the inventories to the Event Handler.
  */
-class GuiSession(
-    private val blueprint: ChestGUI, private val context: LimeStyleSheet
-) {
+class GuiSession(private val blueprint: ChestGUI, private val context: LimeStyleSheet) {
 
     private val player = context.player ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
 
@@ -32,9 +29,8 @@ class GuiSession(
         builder.apply(blueprint.block)
         val handler = builder.build()
 
-        // Get reference to Global Page (Page 0) - Safely cast to Impl to access specific fields
-        val globalPage = builder.pages[0] as? GuiPageImpl
-
+        // Get reference to Global Page (Page 0)
+        val globalPage = builder.pages[0]
         builder.pages.forEach { (pageId, guiPage) ->
 
             val styledTitle = generateTitle(blueprint.setting.title, pageId)
@@ -78,7 +74,7 @@ class GuiSession(
      */
     private fun generateTitle(rawTitle: String, pageId: Int): String {
         val title = rawTitle.replace("{page}", pageId.toString())
-        val useStylishFont = blueprint.setting.style?.stylishTitle ?: false
+        val useStylishFont = blueprint.setting.style.stylishTitle
         return FontStyle.applyStyle(title, context, useStylishFont)
     }
 }

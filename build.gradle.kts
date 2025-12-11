@@ -38,7 +38,6 @@ dependencies {
     compileOnly(libs.adventure.text.serializer.legacy)
     compileOnly(libs.papi)
     compileOnly(libs.viaversion)
-
 //    testImplementation(libs.junit.jupiter)
 //    testImplementation(libs.mockbukkit )
 //    testImplementation(kotlin("test"))

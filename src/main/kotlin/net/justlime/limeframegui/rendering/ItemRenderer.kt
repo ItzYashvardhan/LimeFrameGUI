@@ -17,7 +17,7 @@ object ItemRenderer {
         val finalContext = sessionContext.copy()
 
         // Merge Item-Specific Placeholders into the Session Context
-        item.style?.let { itemContext ->
+        item.style.let { itemContext ->
             val mergedPlaceholders = finalContext.placeholder.toMutableMap()
             mergedPlaceholders.putAll(itemContext.placeholder)
             finalContext.placeholder = mergedPlaceholders

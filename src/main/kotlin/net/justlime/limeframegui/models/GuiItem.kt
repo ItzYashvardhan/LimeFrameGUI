@@ -152,6 +152,26 @@ data class GuiItem(
     }
 
     /**
+     * Updates the internal base item stack.
+     */
+    fun setItemStack(stack: ItemStack) {
+        this.baseItemStack = stack.clone()
+        this.material = stack.type
+        this.amount = stack.amount
+    }
+
+    fun getItemStack(): ItemStack? = baseItemStack
+
+    /**
+     * Creates a deep copy of the GuiItem.
+     */
+    fun clone(): GuiItem {
+        return this.copy(
+            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), style = this.style.copy(), baseItemStack = this.baseItemStack?.clone()
+        )
+    }
+
+    /**
      * Applies texture logic specifically for SkullMeta.
      */
     private fun applySkullTexture(meta: SkullMeta) {
@@ -160,10 +180,10 @@ data class GuiItem(
         when {
             // Case A: {player} placeholder
             tex.equals("{player}", ignoreCase = true) -> {
-                style?.player?.let { p ->
+                style.player?.let { p ->
                     if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = p.playerProfile
                     else meta.owningPlayer = p
-                } ?: style?.offlinePlayer?.let { op ->
+                } ?: style.offlinePlayer?.let { op ->
                     meta.owningPlayer = op
                 }
             }
@@ -190,25 +210,5 @@ data class GuiItem(
 
     private fun isPlayerHead(): Boolean {
         return material.name.contains("PLAYER_HEAD", ignoreCase = true) || material.name.contains("SKULL_ITEM", ignoreCase = true)
-    }
-
-    /**
-     * Updates the internal base item stack.
-     */
-    fun setItemStack(stack: ItemStack) {
-        this.baseItemStack = stack.clone()
-        this.material = stack.type
-        this.amount = stack.amount
-    }
-
-    fun getItemStack(): ItemStack? = baseItemStack
-
-    /**
-     * Creates a deep copy of the GuiItem.
-     */
-    fun clone(): GuiItem {
-        return this.copy(
-            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), style = this.style.copy(), baseItemStack = this.baseItemStack?.clone()
-        )
     }
 }

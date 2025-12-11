@@ -16,7 +16,6 @@ import java.util.regex.Pattern
 
 object SkullUtils {
 
-// In SkullUtils.kt
 
     /**
      * Applies a pre-created profile object to a SkullMeta.

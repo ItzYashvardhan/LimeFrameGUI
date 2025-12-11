@@ -14,7 +14,6 @@ object SkullProfileCache {
      * @return The cached or newly created profile object (PlayerProfile on 1.18+, GameProfile on older versions).
      */
     fun getProfile(texture: String): Any {
-        // The getOrPut lambda now correctly returns the profile object to be cached.
         return cache.getOrPut(texture) {
             // Check the server version and create the correct type of profile.
             if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) {

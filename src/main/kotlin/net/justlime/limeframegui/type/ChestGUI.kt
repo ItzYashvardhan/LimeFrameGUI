@@ -2,7 +2,6 @@ package net.justlime.limeframegui.type
 
 import net.justlime.limeframegui.impl.ChestGUIBuilder
 import net.justlime.limeframegui.models.GUISetting
-import net.justlime.limeframegui.models.LimeStyleSheet
 import net.justlime.limeframegui.session.GuiSession
 import org.bukkit.entity.Player
 
@@ -26,7 +25,7 @@ class ChestGUI(val setting: GUISetting, val block: ChestGUIBuilder.() -> Unit = 
     fun open(player: Player, page: Int? = null) {
 
         // Prepare the Style Context for this session
-        val context = setting.style?.copy() ?: LimeStyleSheet()
+        val context = setting.style.copy()
 
         if (context.player == null) context.player = player
 
