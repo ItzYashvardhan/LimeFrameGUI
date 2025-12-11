@@ -2,6 +2,7 @@ package net.justlime.limeframegui.api
 
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.enums.ColorType
+import net.justlime.limeframegui.integration.SkinRestorerHook
 import net.justlime.limeframegui.listener.InventoryListener
 import net.justlime.limeframegui.listener.PluginListener
 import net.justlime.limeframegui.models.FrameConfigKeys
@@ -23,6 +24,8 @@ object LimeFrameAPI {
 
         FontStyle.setColorType(colorType)
         if (colorType == ColorType.MINI_MESSAGE) FontStyle.initMiniMessage()
+
+        SkinRestorerHook.init()
 
         //run a task on plugin disable
         Bukkit.getPluginManager().registerEvents(PluginListener(), plugin)

@@ -1,7 +1,7 @@
 package net.justlime.limeframegui.models
 
 import net.justlime.limeframegui.color.FontStyle
-import net.justlime.limeframegui.utilities.SkinFileHook
+import net.justlime.limeframegui.integration.SkinRestorerHook
 import net.justlime.limeframegui.utilities.SkullProfileCache
 import net.justlime.limeframegui.utilities.SkullUtils
 import org.bukkit.Bukkit
@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
 import org.bukkit.inventory.meta.SkullMeta
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Represents an item in a LimeFrame GUI.
@@ -193,16 +194,16 @@ data class GuiItem(
                 try {
                     val uuidString = tex.substring(1, tex.length - 1)
                     val uuid = UUID.fromString(uuidString)
-
-                    val fileTexture = SkinFileHook.getSkinByUUID(uuid)
-
-                    if (fileTexture != null) {
-                        SkullUtils.applySkin(meta, SkullProfileCache.getProfile(fileTexture))
-                    } else {
-                        val owner = Bukkit.getOfflinePlayer(uuid)
-                        if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = owner.playerProfile
-                        else meta.owningPlayer = owner
+                    val owner = Bukkit.getOfflinePlayer(uuid)
+                    if (!owner.isOnline) {
+                        val fileTexture = SkinRestorerHook.getSkin(uuid)
+                        if (fileTexture != null) SkullUtils.applySkin(meta, SkullProfileCache.getProfile(fileTexture))
+                        else if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = owner.playerProfile else meta.owningPlayer = owner
+                        return
                     }
+                    if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = owner.playerProfile else meta.owningPlayer = owner
+                    SkinRestorerHook.cache(uuid, null)
+                    return
 
                 } catch (_: Exception) {/* Ignore malformed UUID */
                 }

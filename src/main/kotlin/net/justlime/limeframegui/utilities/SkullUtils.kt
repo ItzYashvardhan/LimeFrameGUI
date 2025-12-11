@@ -6,6 +6,7 @@ import com.google.gson.JsonObject
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
 import org.bukkit.Bukkit
+import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.SkullMeta
 import org.bukkit.profile.PlayerProfile
@@ -15,8 +16,6 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 object SkullUtils {
-
-
     /**
      * Applies a pre-created profile object to a SkullMeta.
      *

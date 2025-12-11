@@ -1,8 +1,5 @@
 package net.justlime.limeframegui.utilities
 
-import org.bukkit.inventory.meta.SkullMeta
-import org.bukkit.profile.PlayerProfile
-
 object SkullProfileCache {
     // The cache stores either a PlayerProfile or a GameProfile, so we use 'Any'.
     private val cache = mutableMapOf<String, Any>()
