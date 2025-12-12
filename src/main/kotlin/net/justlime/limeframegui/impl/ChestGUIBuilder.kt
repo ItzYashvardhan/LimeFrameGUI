@@ -234,7 +234,7 @@ class ChestGUIBuilder(originalSetting: GUISetting) {
 
     fun setItem(items: GuiItem?, slot: List<Int>, onClick: ((InventoryClickEvent) -> Unit) = { _ -> }) {
         actions += ChestGuiActions.GLOBAL_ITEMS to {
-            if (items != null) {
+            if (items != null && slot.isNotEmpty()) {
                 val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] ?: return@to
 
                 slot.forEach { currentSlot ->

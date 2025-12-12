@@ -20,7 +20,7 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
     private val keys = LimeFrameAPI.keys
 
     private var file = File(dataFolder, filename)
-    private var config: YamlConfiguration = loadYaml()
+    var config: YamlConfiguration = loadYaml()
 
     fun reload(): Boolean {
         val reloadedFile = File(dataFolder, filename)

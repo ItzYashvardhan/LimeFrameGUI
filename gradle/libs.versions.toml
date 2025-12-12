@@ -6,10 +6,9 @@ papi_version = "2.11.7"
 bstats = "3.1.0"
 annotaiton = "23.0.0"
 reflection = "2.1.21"
-
-# Implementation
 adventure = "4.24.0"
 via_version = "5.4.2"
+folialib = "0.5.1"
 
 # Test
 mockbukkit = "4.98.0"
@@ -30,6 +29,7 @@ adventure-text-serializer-legacy = {module = "net.kyori:adventure-text-serialize
 annotation = {module = "org.jetbrains:annotations",version.ref = "annotaiton"}
 bstats = { module = "org.bstats:bstats-bukkit", version.ref = "bstats" }
 viaversion = {module = "com.viaversion:viaversion-api", version.ref = "via_version"}
+folialib = {module = "com.tcoded:FoliaLib", version.ref = "folialib"}
 
 #Test
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
