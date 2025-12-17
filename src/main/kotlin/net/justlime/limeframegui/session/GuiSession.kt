@@ -2,7 +2,7 @@ package net.justlime.limeframegui.session
 
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.impl.ChestGUIBuilder
-import net.justlime.limeframegui.models.LimeStyleSheet
+import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.rendering.ItemRenderer
 import net.justlime.limeframegui.type.ChestGUI
 import org.bukkit.Bukkit
@@ -16,7 +16,7 @@ import org.bukkit.Bukkit
  * 2. Rendering items with Player-Specific placeholders.
  * 3. Connecting the inventories to the Event Handler.
  */
-class GuiSession(private val blueprint: ChestGUI, private val context: LimeStyleSheet) {
+class GuiSession(private val blueprint: ChestGUI, private val context: GuiStyleSheet) {
 
     private val player = context.player ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
 

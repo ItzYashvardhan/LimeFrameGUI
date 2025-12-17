@@ -6,6 +6,7 @@ import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.utilities.FrameAdapter
+import net.justlime.limeframegui.utilities.item
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
@@ -107,6 +108,7 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
         if (!hasTriggeredGlobalOpen.contains(player.name)) {
             globalOpenHandler?.invoke(event)
             hasTriggeredGlobalOpen.add(player.name)
+            setting.style.openSound.playSound(player)
         }
     }
 
@@ -126,6 +128,10 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
 
         // Priority 3: Global click handler.
         globalClickHandler?.invoke(event)
+
+        val soundToPlay = event.item?.style?.clickSound?.takeIf { !it.isEmpty() } ?: setting.style.clickSound
+        soundToPlay.playSound(player)
+
     }
 
     /**
@@ -146,6 +152,7 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
                     globalCloseHandler?.invoke(event)
                     currentPages.remove(player.name)
                     hasTriggeredGlobalOpen.remove(player.name)
+                    setting.style.closeSound.playSound(player)
                 }
             }
             return

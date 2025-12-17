@@ -1,7 +1,7 @@
 package net.justlime.limeframegui.rendering
 
 import net.justlime.limeframegui.models.GuiItem
-import net.justlime.limeframegui.models.LimeStyleSheet
+import net.justlime.limeframegui.models.GuiStyleSheet
 import org.bukkit.inventory.ItemStack
 
 /**
@@ -10,7 +10,7 @@ import org.bukkit.inventory.ItemStack
  */
 object ItemRenderer {
 
-    fun render(item: GuiItem, sessionContext: LimeStyleSheet): ItemStack {
+    fun render(item: GuiItem, sessionContext: GuiStyleSheet): ItemStack {
         val tempItem = item.clone()
 
         // Start with the Session Context (Player, Global PAPI)

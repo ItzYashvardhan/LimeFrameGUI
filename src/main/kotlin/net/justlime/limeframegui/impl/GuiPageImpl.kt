@@ -172,14 +172,13 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
     }
 
     private fun GuiItem.applyStyleSheet() {
-        if (this.style.isEmpty()) {
-            this.style = setting.style
-        } else {
-            this.style.let {
-                if (it.player == null) it.player = setting.style.player
-                if (it.offlinePlayer == null) it.offlinePlayer = setting.style.offlinePlayer
-                if (it.placeholder.isEmpty()) it.placeholder = setting.style.placeholder
-            }
+        this.style.let {
+            if (it.player == null) it.player = setting.style.player
+            if (it.offlinePlayer == null) it.offlinePlayer = setting.style.offlinePlayer
+            if (it.placeholder.isEmpty()) it.placeholder = setting.style.placeholder
+            if (it.openSound.isEmpty()) it.openSound = setting.style.openSound
+            if (it.closeSound.isEmpty()) it.closeSound = setting.style.closeSound
+            if (it.clickSound.isEmpty()) it.clickSound = setting.style.clickSound
         }
     }
 

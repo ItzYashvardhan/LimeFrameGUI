@@ -57,7 +57,7 @@ data class GuiItem(
     // Placeholder & Dynamic Content
     val nameState: (() -> String)? = null,
     val loreState: (() -> List<String>)? = null,
-    var style: LimeStyleSheet = LimeStyleSheet(),
+    var style: GuiStyleSheet = GuiStyleSheet(),
 
     private var baseItemStack: ItemStack? = null,
 

@@ -1,7 +1,7 @@
 package net.justlime.limeframegui.utilities
 
 import net.justlime.limeframegui.models.GuiItem
-import net.justlime.limeframegui.models.LimeStyleSheet
+import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.rendering.ItemRenderer
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.Inventory
@@ -238,8 +238,8 @@ fun InventoryClickEvent.update() {
 
 /**
  * Updates the item in the inventory at the clicked slot with the current state of the `item` property
- * of this [InventoryClickEvent], applying the provided [LimeStyleSheet] for rendering.
+ * of this [InventoryClickEvent], applying the provided [GuiStyleSheet] for rendering.
  */
-fun InventoryClickEvent.update(style: LimeStyleSheet) {
+fun InventoryClickEvent.update(style: GuiStyleSheet) {
     this.inventory.setItem(this.slot, ItemRenderer.render(this.item ?: return this.update(), style))
 }

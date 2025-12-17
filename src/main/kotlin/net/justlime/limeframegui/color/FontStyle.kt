@@ -3,7 +3,7 @@ package net.justlime.limeframegui.color
 import me.clip.placeholderapi.PlaceholderAPI
 import net.justlime.limeframegui.enums.CapsState
 import net.justlime.limeframegui.enums.ColorType
-import net.justlime.limeframegui.models.LimeStyleSheet
+import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.utilities.VersionHandler
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
@@ -34,7 +34,7 @@ object FontStyle {
      * Always returns a String.
      * - Priority to [OfflinePlayer] if both player type given
      */
-    fun applyStyle(text: String, style: LimeStyleSheet, useStylishFont: Boolean): String {
+    fun applyStyle(text: String, style: GuiStyleSheet, useStylishFont: Boolean): String {
         var newText = text
 
         val playerName = style.player?.name ?: style.offlinePlayer?.name
@@ -67,7 +67,7 @@ object FontStyle {
         return smallCapsText
     }
 
-    fun applyStyle(text: List<String>, styleSheet: LimeStyleSheet, useStylishFont: Boolean): List<String> {
+    fun applyStyle(text: List<String>, styleSheet: GuiStyleSheet, useStylishFont: Boolean): List<String> {
         return text.map { applyStyle(it, styleSheet, useStylishFont) }
     }
 

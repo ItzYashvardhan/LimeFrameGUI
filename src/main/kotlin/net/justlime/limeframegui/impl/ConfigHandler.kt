@@ -3,7 +3,8 @@ package net.justlime.limeframegui.impl
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
-import net.justlime.limeframegui.models.LimeStyleSheet
+import net.justlime.limeframegui.models.GuiSound
+import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.utilities.FrameConverter
 import net.justlime.limeframegui.utilities.toGuiItem
 import org.bukkit.Bukkit
@@ -15,6 +16,7 @@ import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 import java.io.File
 
+@Suppress("unused")
 class ConfigHandler(private val filename: String, private val dataFolder: File = LimeFrameAPI.getPlugin().dataFolder) {
 
     private val keys = LimeFrameAPI.keys
@@ -66,9 +68,13 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
                 slotList = getIntegerList(keys.slotList),
                 unbreakable = getBoolean(keys.unbreakable, false),
                 damage = takeIf { contains(keys.damage) }?.getInt(keys.damage),
-                style = LimeStyleSheet(
+                style = GuiStyleSheet(
                     stylishName = takeIf { contains(keys.stylishFontName) }?.getBoolean(keys.stylishFontName) ?: keys.stylishName,
                     stylishLore = takeIf { contains(keys.stylishFontLore) }?.getBoolean(keys.stylishFontLore) ?: keys.stylishLore,
+                    clickSound = takeIf { contains(keys.stylishItemSound) }?.getString(keys.stylishItemSound)?.split(",")?.let {
+                        GuiSound(it.getOrNull(0), it.getOrNull(1)?.toFloat() ?: 1.0f, it.getOrNull(2)?.toFloat() ?: 1.0f)
+                    } ?: keys.clickSound
+
                 ),
             )
         }
@@ -121,7 +127,6 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
 
     fun loadInventory(path: String): Inventory? {
         val section = config.getConfigurationSection(path) ?: return null
-        // This already correctly reuses the loadInventorySetting method, which is good practice.
         val setting = loadInventorySetting(path)
 
         val inventory = Bukkit.createInventory(null, setting.rows * 9, setting.title)
@@ -144,7 +149,12 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         val stylishTitle = section.getBoolean(keys.stylishFontTitle, keys.stylishTitle)
         val stylishName = section.getBoolean(keys.stylishFontName, keys.stylishName)
         val stylishLore = section.getBoolean(keys.stylishFontLore, keys.stylishLore)
-        return GUISetting(rows, title, LimeStyleSheet(stylishTitle = stylishTitle, stylishName = stylishName, stylishLore = stylishLore))
+        val clickSound = section.getString(keys.stylishItemSound)?.split(",")?.let { GuiSound(it.getOrNull(0), it.getOrNull(1)?.toFloat() ?: 1.0f, it.getOrNull(2)?.toFloat() ?: 1.0f) } ?: keys.clickSound
+        val openSound = section.getString(keys.stylishOpenSound)?.split(",")?.let { GuiSound(it.getOrNull(0), it.getOrNull(1)?.toFloat() ?: 1.0f, it.getOrNull(2)?.toFloat() ?: 1.0f) } ?: keys.openSound
+        val closeSound = section.getString(keys.stylishCloseSound)?.split(",")?.let { GuiSound(it.getOrNull(0), it.getOrNull(1)?.toFloat() ?: 1.0f, it.getOrNull(2)?.toFloat() ?: 1.0f) } ?: keys.closeSound
+
+        return GUISetting(rows, title, GuiStyleSheet(stylishTitle = stylishTitle, stylishName = stylishName, stylishLore = stylishLore, clickSound = clickSound, openSound = openSound, closeSound = closeSound))
+
     }
 
     fun saveInventory(path: String, inventory: Inventory, inventoryTitle: String = keys.defaultInventoryTitle): Boolean {
@@ -213,14 +223,22 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         section.set(keys.amount, item.amount)
         section.set(keys.unbreakable, item.unbreakable)
         section.set(keys.damage, item.damage)
-        item.style?.stylishName?.let { section.set(keys.stylishFontName, it) }
-        item.style?.stylishLore?.let { section.set(keys.stylishFontLore, it) }
+        item.style.stylishName.let { section.set(keys.stylishFontName, it) }
+        item.style.stylishLore.let { section.set(keys.stylishFontLore, it) }
         item.slot?.let { section.set(keys.slot, it) }
         if (item.slotList.isNotEmpty()) section.set(keys.slotList, item.slotList)
+        item.style.clickSound.let { if (!it.isEmpty()) section.set(keys.stylishItemSound, "${it.sound},${it.pitch},${it.volume}") }
     }
 
     private fun writeInventorySettingsToSection(section: ConfigurationSection, rows: Int, title: String) {
         section.set(keys.inventoryTitle, title)
         section.set(keys.inventoryRows, rows)
+        section.set(keys.stylishFontTitle, LimeFrameAPI.keys.stylishTitle)
+        section.set(keys.stylishFontName, LimeFrameAPI.keys.stylishName)
+        section.set(keys.stylishFontLore, LimeFrameAPI.keys.stylishLore)
+        if (!LimeFrameAPI.keys.clickSound.isEmpty()) section.set(keys.stylishItemSound, "${LimeFrameAPI.keys.clickSound.sound},${LimeFrameAPI.keys.clickSound.pitch},${LimeFrameAPI.keys.clickSound.volume}")
+        if (!LimeFrameAPI.keys.openSound.isEmpty()) section.set(keys.stylishOpenSound, "${LimeFrameAPI.keys.openSound.sound},${LimeFrameAPI.keys.openSound.pitch},${LimeFrameAPI.keys.openSound.volume}")
+        if (!LimeFrameAPI.keys.closeSound.isEmpty()) section.set(keys.stylishCloseSound, "${LimeFrameAPI.keys.closeSound.sound},${LimeFrameAPI.keys.closeSound.pitch},${LimeFrameAPI.keys.closeSound.volume}")
+
     }
 }

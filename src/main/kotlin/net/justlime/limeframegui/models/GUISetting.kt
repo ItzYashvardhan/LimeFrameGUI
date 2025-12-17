@@ -6,7 +6,7 @@ import org.bukkit.event.inventory.InventoryType
 data class GUISetting(
     var rows: Int,
     var title: String,
-    var style: LimeStyleSheet = LimeStyleSheet(),
+    var style: GuiStyleSheet = GuiStyleSheet(),
     var type: InventoryType = InventoryType.CHEST,
     var mode: RenderMode = RenderMode.LAZY,
 ) {
