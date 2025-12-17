@@ -13,7 +13,6 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
 import org.bukkit.inventory.meta.SkullMeta
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Represents an item in a LimeFrame GUI.

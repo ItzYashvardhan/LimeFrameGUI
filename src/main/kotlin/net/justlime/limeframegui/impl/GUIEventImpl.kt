@@ -2,6 +2,7 @@ package net.justlime.limeframegui.impl
 
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.utilities.FrameAdapter
@@ -138,6 +139,19 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
         pageCloseHandlers[pageId]?.invoke(event)
 
         // Clean up the player's page tracking to prevent memory leaks.
+        if (FoliaLibHook.isInitialized()) {
+            FoliaLibHook.foliaLib.scheduler.runNextTick {
+                val openInventory = FrameAdapter.getTopInventorySafe(player)
+                if (!pageInventories.containsValue(openInventory)) {
+                    globalCloseHandler?.invoke(event)
+                    currentPages.remove(player.name)
+                    hasTriggeredGlobalOpen.remove(player.name)
+                }
+            }
+            return
+        }
+
+
         Bukkit.getScheduler().runTask(plugin, Runnable {
             val openInventory = FrameAdapter.getTopInventorySafe(player)
             if (!pageInventories.containsValue(openInventory)) {

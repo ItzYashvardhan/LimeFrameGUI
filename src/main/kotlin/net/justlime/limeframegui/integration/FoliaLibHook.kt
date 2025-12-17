@@ -9,5 +9,8 @@ object FoliaLibHook {
     fun init(plugin: JavaPlugin) {
         foliaLib = FoliaLib(plugin)
     }
+    fun isInitialized(): Boolean {
+        return ::foliaLib.isInitialized
+    }
 
 }
