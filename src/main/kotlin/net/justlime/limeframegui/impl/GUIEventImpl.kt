@@ -113,7 +113,7 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
     }
 
     /**
-     * Handles click events with a clear priority system, stopping if the event is cancelled.
+     * Handles click events with a clear priority system, stopping if the event is canceled.
      */
     override fun onEvent(event: InventoryClickEvent) {
         val player = event.whoClicked as? Player ?: return

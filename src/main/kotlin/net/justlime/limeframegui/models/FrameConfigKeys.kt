@@ -8,7 +8,6 @@ data class FrameConfigKeys(
     var inventoryItemSection: String = "items",
     var defaultInventoryTitle: String = "LimeFrame Inventory",
     var defaultInventoryRows: Int = 6,
-    var defaultRenderMode: RenderMode = RenderMode.EAGER,
     var material: String = "material",
     var name: String = "name",
     var lore: String = "lore",

@@ -88,6 +88,9 @@ class SimpleGUICommand() : CommandHandler {
                 this.margin = 3
 //                this.nextSlot = 48
 //                this.prevSlot = 51
+
+                buffer {
+                }
             }
 
             //Global Click handler

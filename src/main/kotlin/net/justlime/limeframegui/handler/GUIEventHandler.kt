@@ -33,11 +33,10 @@ interface GUIEventHandler : InventoryHolder {
     val itemClickHandler: MutableMap<Int, MutableMap<Int, (InventoryClickEvent) -> Unit>>
 
     /**
-     * Stores the actual Inventory object for each page. This is populated by the builder
+     * Stores the actual Inventory object for each page. This is populated by the builder and session
      * - Structure: Page ID -> Inventory
      * **/
     val pageInventories: MutableMap<Int, Inventory>
-
 
     /**
      * The inventory associated with this GUI

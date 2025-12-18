@@ -6,7 +6,9 @@ import net.justlime.limeframegui.handler.GUIEventHandler
 import net.justlime.limeframegui.handler.GuiPage
 import net.justlime.limeframegui.models.FrameReservedSlotPage
 import net.justlime.limeframegui.models.GUISetting
+import net.justlime.limeframegui.models.GuiBuffer
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.session.GuiSession
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.utilities.toGuiItem
 import org.bukkit.event.inventory.InventoryClickEvent
@@ -19,9 +21,11 @@ import org.bukkit.inventory.Inventory
  * Its job is to exist before any player interacts with the GUI.
  * Use it to define the layout, the pages, and the rules. It's like an architect's blueprint for a house.
  */
-class ChestGUIBuilder(originalSetting: GUISetting) {
+class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
 
     val setting: GUISetting = originalSetting.clone()
+    var buffer : GuiBuffer? = null
+
 
     /**
      * The lazy-loading store. All items that don't fit on manually-defined

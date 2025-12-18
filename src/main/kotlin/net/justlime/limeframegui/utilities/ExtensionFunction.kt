@@ -2,7 +2,7 @@ package net.justlime.limeframegui.utilities
 
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiStyleSheet
-import net.justlime.limeframegui.rendering.ItemRenderer
+import net.justlime.limeframegui.session.ItemRenderer
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
