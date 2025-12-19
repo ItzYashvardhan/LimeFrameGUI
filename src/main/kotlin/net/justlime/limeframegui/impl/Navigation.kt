@@ -21,11 +21,6 @@ class Navigation(val builder: ChestGUIBuilder, private val handler: GUIEventHand
 
     /**
      * DSL for configuring Lazy Loading / Page Buffering.
-     * Usage:
-     * buffer {
-     * unRenderPages = true
-     * renderLimit = 5
-     * }
      */
     fun buffer(block: GuiBuffer.() -> Unit) {
         if (builder.buffer == null) builder.buffer = GuiBuffer()
