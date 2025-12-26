@@ -172,6 +172,19 @@ data class GuiItem(
         )
     }
 
+
+    fun applyStyleSheet(style: GuiStyleSheet) {
+        this.style.let {
+            it.viewer = style.viewer
+            it.offlinePlayer = style.offlinePlayer
+            it.placeholder = style.placeholder
+            it.openSound = style.openSound
+            it.closeSound = style.closeSound
+            it.clickSound = style.clickSound
+        }
+    }
+
+
     /**
      * Applies texture logic specifically for SkullMeta.
      */
@@ -181,11 +194,9 @@ data class GuiItem(
         when {
             // Case A: {player} placeholder
             tex.equals("{player}", ignoreCase = true) -> {
-                style.player?.let { p ->
+                style.offlinePlayer?.let { p ->
                     if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = p.playerProfile
                     else meta.owningPlayer = p
-                } ?: style.offlinePlayer?.let { op ->
-                    meta.owningPlayer = op
                 }
             }
             // Case B: UUID string "[uuid]"
@@ -213,6 +224,8 @@ data class GuiItem(
             }
         }
     }
+
+
 
     private fun isEmpty(): Boolean {
         return name.isEmpty() && currentName.isEmpty() && lore.isEmpty() && currentLore.isEmpty()

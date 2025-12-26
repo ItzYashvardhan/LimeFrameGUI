@@ -20,6 +20,7 @@ import org.bukkit.inventory.Inventory
  * The Builder is a Blueprint: ChestGuiBuilder is a configuration object.
  * Its job is to exist before any player interacts with the GUI.
  * Use it to define the layout, the pages, and the rules. It's like an architect's blueprint for a house.
+ * - the setting contain empty stylesheet
  */
 class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
 
@@ -146,7 +147,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
      * Creates a new page, correctly copying all items and handlers from the global page.
      */
     private fun createPage(pageId: Int, setting: GUISetting): GuiPage {
-        val newPage = GuiPageImpl(this, guiHandler, pageId, setting)
+        val newPage = GuiPageImpl(this, guiHandler, pageId, setting,)
 
         val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] as? GuiPageImpl ?: return newPage
 

@@ -25,9 +25,11 @@ class ChestGUI(val setting: GUISetting, val block: ChestGUIBuilder.() -> Unit = 
     fun open(player: Player, page: Int? = null) {
 
         // Prepare the Style Context for this session
-        val context = setting.style.copy()
+        val context = setting.style.copy().apply {
+            viewer = player
+            if (offlinePlayer == null) offlinePlayer = player
 
-        if (context.player == null) context.player = player
+        }
 
         // Start the Session for player).
         val session = GuiSession(this, context)

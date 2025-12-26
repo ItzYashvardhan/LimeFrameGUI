@@ -5,8 +5,8 @@ import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
 
 data class GuiStyleSheet(
-    var player: Player? = null,
-    var offlinePlayer: OfflinePlayer? = null, //Recommended
+    var viewer: Player? = null, //This will always be populated during opening a gui
+    var offlinePlayer: OfflinePlayer? = null, //This is used to set placeholder value if none given it will take viewer as default
     var placeholder: Map<String, String> = mutableMapOf(),
     var stylishTitle: Boolean = LimeFrameAPI.keys.stylishTitle,
     var stylishName: Boolean = LimeFrameAPI.keys.stylishName,
@@ -16,7 +16,7 @@ data class GuiStyleSheet(
     var closeSound: GuiSound = LimeFrameAPI.keys.closeSound
 ) {
 
-    fun isEmpty(): Boolean = player == null && offlinePlayer == null && placeholder.isEmpty() && stylishTitle == LimeFrameAPI.keys.stylishTitle && stylishName == LimeFrameAPI.keys.stylishName && stylishLore == LimeFrameAPI.keys.stylishLore && clickSound == LimeFrameAPI.keys.clickSound && openSound == LimeFrameAPI.keys.openSound && closeSound == LimeFrameAPI.keys.closeSound
+    fun isEmpty(): Boolean = viewer == null && offlinePlayer == null && placeholder.isEmpty() && stylishTitle == LimeFrameAPI.keys.stylishTitle && stylishName == LimeFrameAPI.keys.stylishName && stylishLore == LimeFrameAPI.keys.stylishLore && clickSound == LimeFrameAPI.keys.clickSound && openSound == LimeFrameAPI.keys.openSound && closeSound == LimeFrameAPI.keys.closeSound
 
 
 }

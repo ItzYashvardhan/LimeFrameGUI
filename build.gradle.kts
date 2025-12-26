@@ -34,16 +34,16 @@ dependencies {
     compileOnly(libs.kotlin)
     compileOnly(libs.kotlin.reflection)
     compileOnly(libs.annotation)
-    implementation(libs.adventure.text.minimessage)
-    implementation(libs.adventure.text.serializer.legacy)
+    compileOnly(libs.adventure.text.minimessage)
+    compileOnly(libs.adventure.text.serializer.legacy)
+    compileOnly(libs.adventure.text.serializer.plain)
+    compileOnly(libs.adventure.text.serializer.gson)
     compileOnly(libs.papi)
     compileOnly(libs.viaversion)
     compileOnly(libs.bstats)
     compileOnly(libs.folialib)
-//    testImplementation(libs.junit.jupiter)
-//    testImplementation(libs.mockbukkit )
-//    testImplementation(kotlin("test"))
-//    testImplementation(libs.spigot)
+    compileOnly(libs.anvilgui)
+
 }
 
 

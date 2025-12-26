@@ -8,17 +8,15 @@ import java.util.regex.Pattern
 
 object VersionHandler {
 
-    private val SERVER_VERSION_PATTERN = Pattern.compile("\\(MC: (\\d+\\.\\d+(\\.\\d+)?)\\)")
 
-    /**
-     * Gets the native Minecraft version of the server.
-     */
+    private val SERVER_VERSION_PATTERN = Pattern.compile("\\(MC: ?(\\d+(\\.\\d+)*)\\)")
+
     fun getNativeServerVersion(): String {
         val matcher = SERVER_VERSION_PATTERN.matcher(Bukkit.getVersion())
         return if (matcher.find()) {
             matcher.group(1)
         } else {
-            Bukkit.getBukkitVersion().split("-")[0]
+            Bukkit.getBukkitVersion().split("-", " ")[0]
         }
     }
 
@@ -35,7 +33,6 @@ object VersionHandler {
                 // ViaVersion failed, ignore and use fallback
             }
         }
-
         return getNativeServerVersion()
     }
 
@@ -43,29 +40,26 @@ object VersionHandler {
      * Checks if a player's client version is within a specified range.
      */
     fun isVersionSupported(player: Player, minVersion: String, maxVersion: String? = null): Boolean {
-        // This will now never be null
         val clientVersionStr = getClientVersion(player)
-
-        val clientVersion = parseVersion(clientVersionStr)
+        val client = parseVersion(clientVersionStr)
         val min = parseVersion(minVersion)
 
-        // Check: Client >= Min
-        val isAtLeastMin = compareVersions(clientVersion, min) >= 0
+        if (compareVersions(client, min) < 0) return false
 
-        if (!isAtLeastMin) return false
-
-        // Check: Client <= Max (if max exists)
-        return if (maxVersion != null) {
+        if (maxVersion != null) {
             val max = parseVersion(maxVersion)
-            compareVersions(clientVersion, max) <= 0
-        } else {
-            true
+            if (compareVersions(client, max) > 0) return false
         }
+        return true
     }
 
     fun parseVersion(version: String): List<Int> {
-        // Handle "1.16.x" or "Unknown" gracefully by filtering strictly for digits
-        return version.replace(Regex("[^0-9.]"), "").split('.').mapNotNull { it.toIntOrNull() }
+        val parts = mutableListOf<Int>()
+        val matcher = Pattern.compile("\\d+").matcher(version)
+        while (matcher.find()) {
+            matcher.group().toIntOrNull()?.let { parts.add(it) }
+        }
+        return parts
     }
 
     fun compareVersions(v1: List<Int>, v2: List<Int>): Int {

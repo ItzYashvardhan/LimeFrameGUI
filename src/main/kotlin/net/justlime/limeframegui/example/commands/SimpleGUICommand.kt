@@ -89,8 +89,7 @@ class SimpleGUICommand() : CommandHandler {
 //                this.nextSlot = 48
 //                this.prevSlot = 51
 
-                buffer {
-                }
+                buffer {}
             }
 
             //Global Click handler
@@ -102,13 +101,6 @@ class SimpleGUICommand() : CommandHandler {
             setItem(item4) {
                 it.whoClicked.sendMessage("You click on global item")
             }
-
-//            addPage(id = 2, title = "Kebab Mai Hadi"){
-//                item4.slotList = (11..20).toList()
-//                setItem(item4){
-//                    it.whoClicked.sendMessage("You click on global item")
-//                }
-//            }
             addPage(GUISetting(6, "Regular Page {page}")) {
                 //this item added to specific page only (page 1)
                 for (i in 1..100) {
@@ -127,23 +119,6 @@ class SimpleGUICommand() : CommandHandler {
 
             setting.title = "Custom Page {page}"
             setting.rows = 3
-//            addPage {
-//                addItem(item3) {
-//                    it.whoClicked.sendMessage("Clicked on Item 5 at page $currentPage")
-//                }
-//                addItem(item3) {
-//                    it.whoClicked.sendMessage("Clicked on Item 6")
-//                }
-//            }
-//
-//            addPage(GUISetting(4, "Custom Page {page}")) {
-//                addItem(item4) {
-//                    it.whoClicked.sendMessage("Clicked on Item ${it.slot} at page $currentPage")
-//                }
-//                addItem(item3) {
-//                    it.whoClicked.sendMessage("Clicked on Item ${it.slot} at page $currentPage")
-//                }
-//            }
 
         }.open(player)
     }
@@ -288,7 +263,7 @@ class SimpleGUICommand() : CommandHandler {
 private object Example {
     var value = true
     val setting = GUISetting(6, "Example %betterteams_name%").apply {
-        this.style?.apply {
+        this.style.apply {
             stylishName = true
             stylishLore = true
             stylishTitle = true
@@ -305,7 +280,7 @@ private object GuiManager {
 
 private fun formattedPage(setting: GUISetting, player: Player) {
 
-    setting.style?.placeholder = mapOf("{world}" to player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt())
+    setting.style.placeholder = mapOf("{world}" to player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt())
     ChestGUI(setting) {
 
         val item3 = GuiItem(
@@ -354,7 +329,8 @@ private fun formattedPage(setting: GUISetting, player: Player) {
 
             val item2 = GuiItem(
                 material = Material.GOLD_INGOT, name = "Player: %betterteams_name%", lore = listOf(
-                    "<gold>Balance: %vault_eco_balance%", "<white>Location: %player_x%, %player_y%, %player_z%"
+                    "<gold>Balance: %vault_eco_balance%", "<white>Location: %player_x%, %player_y%, %player_z%", "<white>PlayTime: <b>%statistic_time_played% </b>",//
+                    "<white> {world}", "custom: {time}"
                 )
             )
 
@@ -371,10 +347,10 @@ private fun formattedPage(setting: GUISetting, player: Player) {
 
             val item5 = GuiItem(Material.PLAYER_HEAD, texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
 
-
-
-            addItem(item2) {
-                it.whoClicked.sendMessage("Clicked player placeholder item!")
+            item2.style.placeholder = mutableMapOf("{time}" to player.ticksLived.toString())
+            addItem(item2) { event ->
+                event.item?.style?.placeholder = mutableMapOf("{time}" to player.ticksLived.toString())
+                event.update(session.context)
             }
 
             addItem(finalItem) { event ->

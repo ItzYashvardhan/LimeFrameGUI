@@ -233,7 +233,9 @@ var InventoryClickEvent.item: GuiItem?
  * of this [InventoryClickEvent].
  */
 fun InventoryClickEvent.update() {
-    this.inventory.setItem(this.slot, this.item)
+    val guiItem = this.item ?: return
+    val itemStack = ItemRenderer.render(guiItem, guiItem.style)
+    this.inventory.setItem(this.slot, itemStack)
 }
 
 /**
@@ -241,5 +243,8 @@ fun InventoryClickEvent.update() {
  * of this [InventoryClickEvent], applying the provided [GuiStyleSheet] for rendering.
  */
 fun InventoryClickEvent.update(style: GuiStyleSheet) {
-    this.inventory.setItem(this.slot, ItemRenderer.render(this.item ?: return this.update(), style))
+    val guiItem = (this.item ?: return)
+    guiItem.style.placeholder = this.item?.style?.placeholder ?: mutableMapOf()
+    val itemStack = ItemRenderer.render(guiItem, style)
+    this.inventory.setItem(this.slot, itemStack)
 }

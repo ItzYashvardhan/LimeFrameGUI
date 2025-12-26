@@ -3,6 +3,7 @@ package net.justlime.limeframegui.handler
 import net.justlime.limeframegui.impl.Navigation
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiStyleSheet
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryCloseEvent
@@ -13,6 +14,7 @@ interface GuiPage {
     val currentPage: Int
     var inventory: Inventory
     val itemCache: MutableMap<Int, GuiItem>
+    val style: GuiStyleSheet
 
     /**Structure: Slot -> Item to Click**/
     var trackAddItemSlot: MutableMap<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>

@@ -1,5 +1,6 @@
 package net.justlime.limeframegui.color
 
+import loader.FontLoader
 import me.clip.placeholderapi.PlaceholderAPI
 import net.justlime.limeframegui.enums.CapsState
 import net.justlime.limeframegui.enums.ColorType
@@ -37,13 +38,13 @@ object FontStyle {
     fun applyStyle(text: String, style: GuiStyleSheet, useStylishFont: Boolean): String {
         var newText = text
 
-        val playerName = style.player?.name ?: style.offlinePlayer?.name
+        val playerName = style.offlinePlayer?.name
         newText = newText.customPlaceholder(playerName, style.placeholder)
 
         if (isPlaceholderAPIEnabled) {
             newText = when {
                 style.offlinePlayer != null -> PlaceholderAPI.setPlaceholders(style.offlinePlayer, newText)
-                style.player != null -> PlaceholderAPI.setPlaceholders(style.player, newText)
+                style.viewer != null -> PlaceholderAPI.setPlaceholders(style.viewer, newText)
                 else -> newText
             }
         }
@@ -61,7 +62,7 @@ object FontStyle {
             }
         }
 
-        val smallCapsText = coloredText.toSmallCaps(style.player, useStylishFont)
+        val smallCapsText = coloredText.toSmallCaps(style.viewer, useStylishFont)
 
 
         return smallCapsText

@@ -20,9 +20,9 @@ import org.bukkit.inventory.Inventory
  * 2. Rendering items with Player-Specific placeholders.
  * 3. Connecting the inventories to the Event Handler.
  */
-class GuiSession(private val blueprint: ChestGUI, private val context: GuiStyleSheet) {
+class GuiSession(private val blueprint: ChestGUI,  val context: GuiStyleSheet) {
 
-    private val player = context.player ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
+    private val viewer = context.viewer ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
     private var buffer: GuiBuffer? = null
     lateinit var handler: GUIEventHandler
     lateinit var globalPage: GuiPage
@@ -57,17 +57,17 @@ class GuiSession(private val blueprint: ChestGUI, private val context: GuiStyleS
         }
 
 
-        handler.open(player, finalPageId)
+        handler.open(viewer, finalPageId)
 
     }
 
     fun bufferPage(pageId: Int) {
         val buffer = this@GuiSession.buffer ?: run {
-            handler.open(player, pageId)
+            handler.open(viewer, pageId)
             return
         }
 
-        PerformanceMonitor.measure("LAZY PAGE ${handler.getCurrentPage(player)}") {
+        PerformanceMonitor.measure("LAZY PAGE ${handler.getCurrentPage(viewer)}") {
             val allPageIds = builder.pages.keys.filter { it != ChestGUI.GLOBAL_PAGE_ID }.sorted()
             val requestedIndex = allPageIds.indexOf(pageId)
             if (requestedIndex == -1) return@measure
@@ -123,7 +123,7 @@ class GuiSession(private val blueprint: ChestGUI, private val context: GuiStyleS
         }
 
         PerformanceMonitor.measure("Open Handler") {
-            handler.open(player, pageId)
+            handler.open(viewer, pageId)
         }
     }
 

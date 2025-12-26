@@ -71,15 +71,11 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
     }
 
     override fun createPageInventory(id: Int, setting: GUISetting): Inventory {
-
         val size = setting.rows * 9
-        val title = setting.title.replace("{page}", id.toString())
-        val coloredTitle = FontStyle.applyStyle(title, setting.style, setting.style.stylishTitle)
-
-        val inv = Bukkit.createInventory(this, size, coloredTitle)
+        val title = setting.title
+        val inv = Bukkit.createInventory(this, size, title)
         pageInventories[id] = inv
         return inv
-
     }
 
     /**

@@ -4,6 +4,7 @@ import net.justlime.limeframegui.handler.GUIEventHandler
 import net.justlime.limeframegui.handler.GuiPage
 import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.utilities.item
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
@@ -19,6 +20,8 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override val itemCache = mutableMapOf<Int, GuiItem>()
 
+    override val style: GuiStyleSheet = builder.session.context
+
     override fun getItems(): Map<Int, GuiItem> = itemCache
 
     override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
@@ -31,7 +34,6 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
         val newItem = item.clone()
-        newItem.applyStyleSheet()
 
         //Handle for single page (Global Page) or nav is disabled
         if (builder.pages.size == 1 || !builder.reservedSlot.enableNavSlotReservation) {
@@ -73,7 +75,6 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
     override fun setItem(index: Int, item: GuiItem, onClick: ((InventoryClickEvent) -> Unit)): Int {
         val newItem = item.clone()
         if (index < inventory.size) {
-            newItem.applyStyleSheet()
             itemCache[index] = newItem
             registerClickEvent(newItem, index, onClick)
             return index
@@ -169,17 +170,6 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
 
     override fun openPage(player: Player, id: Int) {
         handler.open(player, id)
-    }
-
-    private fun GuiItem.applyStyleSheet() {
-        this.style.let {
-            if (it.player == null) it.player = setting.style.player
-            if (it.offlinePlayer == null) it.offlinePlayer = setting.style.offlinePlayer
-            if (it.placeholder.isEmpty()) it.placeholder = setting.style.placeholder
-            if (it.openSound.isEmpty()) it.openSound = setting.style.openSound
-            if (it.closeSound.isEmpty()) it.closeSound = setting.style.closeSound
-            if (it.clickSound.isEmpty()) it.clickSound = setting.style.clickSound
-        }
     }
 
     private fun findFreeSlot(contents: Map<Int, GuiItem>): Int {

@@ -9,6 +9,7 @@ reflection = "2.1.21"
 adventure = "4.24.0"
 via_version = "5.4.2"
 folialib = "0.5.1"
+anvil_gui = "1.10.10-SNAPSHOT"
 
 # Test
 mockbukkit = "4.98.0"
@@ -26,10 +27,13 @@ authlib = { module = "com.mojang:authlib", version.ref = "authlib" }
 papi = { module = "me.clip:placeholderapi", version.ref = "papi_version" }
 adventure-text-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure" }
 adventure-text-serializer-legacy = {module = "net.kyori:adventure-text-serializer-legacy", version.ref = "adventure"}
+adventure-text-serializer-plain = {module = "net.kyori:adventure-text-serializer-plain", version.ref = "adventure"}
+adventure-text-serializer-gson = {module = "net.kyori:adventure-text-serializer-gson", version.ref = "adventure"}
 annotation = {module = "org.jetbrains:annotations",version.ref = "annotaiton"}
 bstats = { module = "org.bstats:bstats-bukkit", version.ref = "bstats" }
 viaversion = {module = "com.viaversion:viaversion-api", version.ref = "via_version"}
 folialib = {module = "com.tcoded:FoliaLib", version.ref = "folialib"}
+anvilgui = {module = "net.wesjd:anvilgui",version.ref = "anvil_gui"}
 
 #Test
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }

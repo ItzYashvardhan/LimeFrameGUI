@@ -55,6 +55,9 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         val section = config.getConfigurationSection(path) ?: return null
 
         return with(section) {
+
+            val sound = getString(keys.stylishItemSound) ?: getStringList(keys.stylishItemSound)
+
             GuiItem(
                 material = Material.getMaterial(getString(keys.material) ?: "AIR") ?: Material.AIR,
                 name = getString(keys.name) ?: "",
@@ -71,11 +74,7 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
                 style = GuiStyleSheet(
                     stylishName = takeIf { contains(keys.stylishFontName) }?.getBoolean(keys.stylishFontName) ?: keys.stylishName,
                     stylishLore = takeIf { contains(keys.stylishFontLore) }?.getBoolean(keys.stylishFontLore) ?: keys.stylishLore,
-                    clickSound = takeIf { contains(keys.stylishItemSound) }?.getString(keys.stylishItemSound)?.split(",")?.let {
-                        GuiSound(it.getOrNull(0), it.getOrNull(1)?.toFloat() ?: 1.0f, it.getOrNull(2)?.toFloat() ?: 1.0f)
-                    } ?: keys.clickSound
-
-                ),
+                    clickSound = takeIf { contains(keys.stylishItemSound) }?.let { GuiSound.loadSound(sound) } ?: keys.clickSound),
             )
         }
     }
@@ -149,9 +148,14 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         val stylishTitle = section.getBoolean(keys.stylishFontTitle, keys.stylishTitle)
         val stylishName = section.getBoolean(keys.stylishFontName, keys.stylishName)
         val stylishLore = section.getBoolean(keys.stylishFontLore, keys.stylishLore)
-        val clickSound = section.getString(keys.stylishItemSound)?.split(",")?.let { GuiSound(it.getOrNull(0), it.getOrNull(1)?.toFloat() ?: 1.0f, it.getOrNull(2)?.toFloat() ?: 1.0f) } ?: keys.clickSound
-        val openSound = section.getString(keys.stylishOpenSound)?.split(",")?.let { GuiSound(it.getOrNull(0), it.getOrNull(1)?.toFloat() ?: 1.0f, it.getOrNull(2)?.toFloat() ?: 1.0f) } ?: keys.openSound
-        val closeSound = section.getString(keys.stylishCloseSound)?.split(",")?.let { GuiSound(it.getOrNull(0), it.getOrNull(1)?.toFloat() ?: 1.0f, it.getOrNull(2)?.toFloat() ?: 1.0f) } ?: keys.closeSound
+
+        val clickSoundString = section.getString(keys.stylishItemSound) ?: section.getStringList(keys.stylishItemSound)
+        val clickSound = GuiSound.loadSound(clickSoundString)
+        val openSoundString = section.getString(keys.stylishOpenSound) ?: section.getStringList(keys.stylishOpenSound)
+        val openSound = GuiSound.loadSound(openSoundString)
+        val closeSoundString = section.getString(keys.stylishCloseSound) ?: section.getStringList(keys.stylishCloseSound)
+        val closeSound = GuiSound.loadSound(closeSoundString)
+
 
         return GUISetting(rows, title, GuiStyleSheet(stylishTitle = stylishTitle, stylishName = stylishName, stylishLore = stylishLore, clickSound = clickSound, openSound = openSound, closeSound = closeSound))
 
