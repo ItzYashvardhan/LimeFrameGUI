@@ -1,4 +1,4 @@
-package net.justlime.limeframegui.color
+package loader
 
 import net.justlime.limeframegui.api.LimeFrameAPI
 import org.bukkit.configuration.file.YamlConfiguration
@@ -110,14 +110,26 @@ object FontLoader {
                 }
 
                 val loadedMap = mutableMapOf<String, Map<String, String>>()
+
+                // Loop through keys (e.g., "19", "20", "26.1")
                 for (versionKey in config.getKeys(false)) {
-                    val versionSection = config.getConfigurationSection("$versionKey") ?: continue
+                    val versionSection = config.getConfigurationSection(versionKey) ?: continue
                     val characterMap = mutableMapOf<String, String>()
 
                     for (charKey in versionSection.getKeys(false)) {
                         versionSection.getString(charKey)?.let { characterMap[charKey] = it }
                     }
-                    loadedMap["1.$versionKey"] = characterMap
+
+                    // LOGIC CHANGE:
+                    // If key has a dot (e.g. "26.1" or "1.20.4"), use it as is.
+                    // If key is just a number (e.g. "19"), treat it as legacy "1.19".
+                    val finalVersionKey = if (versionKey.contains(".")) {
+                        versionKey
+                    } else {
+                        "1.$versionKey"
+                    }
+
+                    loadedMap[finalVersionKey] = characterMap
                 }
                 capsFont = loadedMap
 
