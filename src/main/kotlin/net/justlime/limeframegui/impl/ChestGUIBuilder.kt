@@ -2,10 +2,10 @@ package net.justlime.limeframegui.impl
 
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.enums.ChestGuiActions
-import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.handler.GuiEventHandler
 import net.justlime.limeframegui.handler.GuiPage
 import net.justlime.limeframegui.models.FrameReservedSlotPage
-import net.justlime.limeframegui.models.GUISetting
+import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.models.GuiBuffer
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.session.GuiSession
@@ -22,9 +22,9 @@ import org.bukkit.inventory.Inventory
  * Use it to define the layout, the pages, and the rules. It's like an architect's blueprint for a house.
  * - the setting contain empty stylesheet
  */
-class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
+class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
 
-    val setting: GUISetting = originalSetting.clone()
+    val setting: GuiSetting = originalSetting.clone()
     var buffer : GuiBuffer? = null
 
 
@@ -50,7 +50,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
     val pages = mutableMapOf<Int, GuiPage>()
 
     /**Main Handler for Registering Events**/
-    private val guiHandler: GUIEventHandler = GUIEventImpl(setting)
+    private val guiHandler: GuiEventHandler = GuiEventImpl(setting)
 
     // All configuration steps are queued as prioritized actions to be executed in order during build().
     private val actions = mutableListOf<Pair<ChestGuiActions, () -> Unit>>()
@@ -101,7 +101,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
      * Adds a page with a specific, unique ID.
      * Throws an error if the ID is already in use or is the reserved global ID.
      */
-    fun addPage(id: Int, setting: GUISetting = this.setting, block: GuiPage.() -> Unit) {
+    fun addPage(id: Int, setting: GuiSetting = this.setting, block: GuiPage.() -> Unit) {
         if (setting.style.isEmpty()) setting.style = this.setting.style
         val runBlock = {
             if (LimeFrameAPI.debugging) println("Starting Execution of Page $id")
@@ -124,7 +124,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
     /**
      * Adds a page with an automatically assigned, incremental ID. This is the recommended approach.
      */
-    fun addPage(setting: GUISetting = this.setting, block: GuiPage.() -> Unit) {
+    fun addPage(setting: GuiSetting = this.setting, block: GuiPage.() -> Unit) {
         if (setting.style.isEmpty()) setting.style = this.setting.style
         val runBlock = {
             val newId = (pages.keys.maxOrNull() ?: ChestGUI.GLOBAL_PAGE_ID) + 1
@@ -146,7 +146,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
     /**
      * Creates a new page, correctly copying all items and handlers from the global page.
      */
-    private fun createPage(pageId: Int, setting: GUISetting): GuiPage {
+    private fun createPage(pageId: Int, setting: GuiSetting): GuiPage {
         val newPage = GuiPageImpl(this, guiHandler, pageId, setting,)
 
         val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] as? GuiPageImpl ?: return newPage
@@ -279,7 +279,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GUISetting) {
     /**
      * Executes all queued actions in their prioritized order and returns the fully configured GuiImpl handler.
      */
-    fun build(): GUIEventHandler {
+    fun build(): GuiEventHandler {
         actions.sortedBy { it.first.priority }.forEach { (action, block) ->
             currentExecutingAction = action
             block()

@@ -1,8 +1,8 @@
 package net.justlime.limeframegui.impl
 
 import net.justlime.limeframegui.api.LimeFrameAPI
-import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.models.GuiSound
 import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.utilities.FrameConverter
@@ -141,8 +141,8 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         return inventory
     }
 
-    fun loadInventorySetting(path: String): GUISetting {
-        val section = config.getConfigurationSection(path) ?: return GUISetting(keys.defaultInventoryRows, keys.defaultInventoryTitle)
+    fun loadInventorySetting(path: String): GuiSetting {
+        val section = config.getConfigurationSection(path) ?: return GuiSetting(keys.defaultInventoryRows, keys.defaultInventoryTitle)
         val title = section.getString(keys.inventoryTitle, keys.defaultInventoryTitle) ?: keys.defaultInventoryTitle
         val rows = section.getInt(keys.inventoryRows, keys.defaultInventoryRows)
         val stylishTitle = section.getBoolean(keys.stylishFontTitle, keys.stylishTitle)
@@ -157,7 +157,7 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         val closeSound = GuiSound.loadSound(closeSoundString)
 
 
-        return GUISetting(rows, title, GuiStyleSheet(stylishTitle = stylishTitle, stylishName = stylishName, stylishLore = stylishLore, clickSound = clickSound, openSound = openSound, closeSound = closeSound))
+        return GuiSetting(rows, title, GuiStyleSheet(stylishTitle = stylishTitle, stylishName = stylishName, stylishLore = stylishLore, clickSound = clickSound, openSound = openSound, closeSound = closeSound))
 
     }
 
@@ -173,7 +173,7 @@ class ConfigHandler(private val filename: String, private val dataFolder: File =
         return save()
     }
 
-    fun saveInventorySetting(path: String, setting: GUISetting): Boolean {
+    fun saveInventorySetting(path: String, setting: GuiSetting): Boolean {
         val section = getSection(path)
         writeInventorySettingsToSection(section, setting.rows, setting.title)
         return save()

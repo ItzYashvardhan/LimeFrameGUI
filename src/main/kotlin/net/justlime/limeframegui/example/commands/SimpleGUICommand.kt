@@ -2,8 +2,8 @@ package net.justlime.limeframegui.example.commands
 
 import net.justlime.limeframegui.handler.CommandHandler
 import net.justlime.limeframegui.impl.ConfigHandler
-import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.utilities.item
 import net.justlime.limeframegui.utilities.toGuiItem
@@ -101,7 +101,7 @@ class SimpleGUICommand() : CommandHandler {
             setItem(item4) {
                 it.whoClicked.sendMessage("You click on global item")
             }
-            addPage(GUISetting(6, "Regular Page {page}")) {
+            addPage(GuiSetting(6, "Regular Page {page}")) {
                 //this item added to specific page only (page 1)
                 for (i in 1..100) {
                     val newItem = item1.copy(name = "Item $i")
@@ -221,14 +221,14 @@ class SimpleGUICommand() : CommandHandler {
         ChestGUI(6, "Nested GUI") {
             onClick { it.isCancelled = true }
 
-            addPage(GUISetting(6, "Nested Page 1")) {
+            addPage(GuiSetting(6, "Nested Page 1")) {
                 val item1 = ItemStack(Material.PAPER).toGuiItem()
                 item1.name = "Go to Nested Page 2"
                 addItem(item1) {
                     openPage(it.whoClicked as Player, 2)
                 }
 
-                val setting = GUISetting(6, "Nested Page 2")
+                val setting = GuiSetting(6, "Nested Page 2")
                 addPage(2, setting) {
                     val item2 = ItemStack(Material.DIAMOND).toGuiItem()
                     item2.name = "Go back to Nested Page 1"
@@ -240,7 +240,7 @@ class SimpleGUICommand() : CommandHandler {
                     addItem(item3) {
                         openPage(it.whoClicked as Player, 3)
                     }
-                    val setting2 = GUISetting(6, "Nested Page 2")
+                    val setting2 = GuiSetting(6, "Nested Page 2")
 
                     addPage(3, setting2) {
                         val item4 = ItemStack(Material.IRON_INGOT).toGuiItem()
@@ -262,7 +262,7 @@ class SimpleGUICommand() : CommandHandler {
 
 private object Example {
     var value = true
-    val setting = GUISetting(6, "Example %betterteams_name%").apply {
+    val setting = GuiSetting(6, "Example %betterteams_name%").apply {
         this.style.apply {
             stylishName = true
             stylishLore = true
@@ -278,9 +278,9 @@ private object GuiManager {
     }
 }
 
-private fun formattedPage(setting: GUISetting, player: Player) {
+private fun formattedPage(setting: GuiSetting, player: Player) {
 
-    setting.style.placeholder = mapOf("{world}" to player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt())
+    setting.style.placeholder["{world}"]  =  player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt()
     ChestGUI(setting) {
 
         val item3 = GuiItem(

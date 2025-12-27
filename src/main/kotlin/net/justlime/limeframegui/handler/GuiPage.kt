@@ -1,8 +1,8 @@
 package net.justlime.limeframegui.handler
 
 import net.justlime.limeframegui.impl.Navigation
-import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.models.GuiStyleSheet
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
@@ -18,7 +18,7 @@ interface GuiPage {
 
     /**Structure: Slot -> Item to Click**/
     var trackAddItemSlot: MutableMap<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>
-    val handler: GUIEventHandler
+    val handler: GuiEventHandler
 
     fun getItems(): Map<Int, GuiItem>
     fun addItem(item: GuiItem, onClick: ((InventoryClickEvent) -> Unit) = {}): Int
@@ -29,8 +29,8 @@ interface GuiPage {
     fun onOpen(handler: (InventoryOpenEvent) -> Unit)
     fun onClose(handler: (InventoryCloseEvent) -> Unit)
     fun onClick(handler: (InventoryClickEvent) -> Unit)
-    fun addPage(id: Int, setting: GUISetting, block: GuiPage.() -> Unit)
-    fun addPage(setting: GUISetting, block: GuiPage.() -> Unit)
+    fun addPage(id: Int, setting: GuiSetting, block: GuiPage.() -> Unit)
+    fun addPage(setting: GuiSetting, block: GuiPage.() -> Unit)
     fun nav(block: Navigation.() -> Unit)
     fun openPage(player: Player, id: Int)
 

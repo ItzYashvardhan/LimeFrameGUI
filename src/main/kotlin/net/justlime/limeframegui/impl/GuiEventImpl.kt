@@ -1,9 +1,8 @@
 package net.justlime.limeframegui.impl
 
-import net.justlime.limeframegui.color.FontStyle
-import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.handler.GuiEventHandler
 import net.justlime.limeframegui.integration.FoliaLibHook
-import net.justlime.limeframegui.models.GUISetting
+import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.utilities.FrameAdapter
 import net.justlime.limeframegui.utilities.item
@@ -23,7 +22,7 @@ import org.bukkit.plugin.java.JavaPlugin
  *
  * @param setting The basic settings for the GUI (title, rows).
  */
-class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
+class GuiEventImpl(private val setting: GuiSetting) : GuiEventHandler {
     private val hasTriggeredGlobalOpen = mutableSetOf<String>()
 
     /** A single, optional handler for global events. **/
@@ -70,7 +69,7 @@ class GUIEventImpl(private val setting: GUISetting) : GUIEventHandler {
         return pageInventories[ChestGUI.GLOBAL_PAGE_ID] ?: createPageInventory(ChestGUI.GLOBAL_PAGE_ID, setting)
     }
 
-    override fun createPageInventory(id: Int, setting: GUISetting): Inventory {
+    override fun createPageInventory(id: Int, setting: GuiSetting): Inventory {
         val size = setting.rows * 9
         val title = setting.title
         val inv = Bukkit.createInventory(this, size, title)

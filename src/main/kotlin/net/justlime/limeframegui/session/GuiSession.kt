@@ -1,7 +1,7 @@
 package net.justlime.limeframegui.session
 
 import net.justlime.limeframegui.color.FontStyle
-import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.handler.GuiEventHandler
 import net.justlime.limeframegui.handler.GuiPage
 import net.justlime.limeframegui.impl.ChestGUIBuilder
 import net.justlime.limeframegui.models.GuiBuffer
@@ -24,7 +24,7 @@ class GuiSession(private val blueprint: ChestGUI,  val context: GuiStyleSheet) {
 
     private val viewer = context.viewer ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
     private var buffer: GuiBuffer? = null
-    lateinit var handler: GUIEventHandler
+    lateinit var handler: GuiEventHandler
     lateinit var globalPage: GuiPage
     lateinit var builder: ChestGUIBuilder
 
@@ -59,6 +59,33 @@ class GuiSession(private val blueprint: ChestGUI,  val context: GuiStyleSheet) {
 
         handler.open(viewer, finalPageId)
 
+    }
+
+    fun startAsync(initialPage: Int? = null){
+        builder = ChestGUIBuilder(this, blueprint.setting)
+        builder.apply(blueprint.block)
+        buffer = builder.buffer
+        handler = builder.build()
+
+        if (builder.pages[0] != null) globalPage = builder.pages[0] ?: throw IllegalStateException("Cannot start a GUI Session without a global page in the builder")
+
+        // Smart Page Selection
+        val minPageId = if (builder.pages.size == 1) 0 else builder.pages.keys.filter { it != 0 }.minOrNull() ?: 1
+        val finalPageId = initialPage ?: minPageId
+
+        // Render Pages
+        if (buffer == null) PerformanceMonitor.measure("FULL PAGES") {
+            builder.pages.forEach { (pageId, guiPage) ->
+                renderPage(pageId, guiPage)
+            }
+        }
+
+        // Lazy Render
+        if (buffer != null) PerformanceMonitor.measure("LAZY PAGES") {
+            renderBufferPages(finalPageId)
+        }
+
+        handler.open(viewer, finalPageId)
     }
 
     fun bufferPage(pageId: Int) {

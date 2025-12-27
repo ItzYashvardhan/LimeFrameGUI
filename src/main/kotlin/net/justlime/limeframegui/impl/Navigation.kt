@@ -1,7 +1,7 @@
 package net.justlime.limeframegui.impl
 
 import net.justlime.limeframegui.api.LimeFrameAPI
-import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.handler.GuiEventHandler
 import net.justlime.limeframegui.models.GuiBuffer
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.type.ChestGUI
@@ -9,7 +9,7 @@ import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 
-class Navigation(val builder: ChestGUIBuilder, private val handler: GUIEventHandler) {
+class Navigation(val builder: ChestGUIBuilder, private val handler: GuiEventHandler) {
 
     // --- User-Overridable Settings ---
     var nextItem: GuiItem = GuiItem(Material.ARROW, "§aNext Page")

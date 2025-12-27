@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.listener
 
-import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.handler.GuiEventHandler
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.inventory.InventoryClickEvent
@@ -17,7 +17,7 @@ class InventoryListener(val plugin: JavaPlugin) : Listener {
         val playerInventory = event.whoClicked.inventory
         val clickedInventory = event.clickedInventory
         if (playerInventory == clickedInventory) return
-        if (holder !is GUIEventHandler) return
+        if (holder !is GuiEventHandler) return
         holder.onEvent(event)
     }
 
@@ -25,7 +25,7 @@ class InventoryListener(val plugin: JavaPlugin) : Listener {
     fun onInventoryClose(event: InventoryCloseEvent) {
         val upperInventory = event.inventory
         val holder = upperInventory.holder
-        if (holder !is GUIEventHandler) return
+        if (holder !is GuiEventHandler) return
         holder.onEvent(event, plugin)
     }
 
@@ -33,7 +33,7 @@ class InventoryListener(val plugin: JavaPlugin) : Listener {
     fun onInventoryOpen(event: InventoryOpenEvent) {
         val upperInventory = event.inventory
         val holder = upperInventory.holder
-        if (holder !is GUIEventHandler) return
+        if (holder !is GuiEventHandler) return
         holder.onEvent(event)
     }
 }

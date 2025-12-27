@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.listener
 
-import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.handler.GuiEventHandler
 import net.justlime.limeframegui.integration.SkinRestorerHook
 import net.justlime.limeframegui.utilities.FrameAdapter
 import org.bukkit.event.EventHandler
@@ -13,7 +13,7 @@ class PluginListener : Listener {
         val onlinePlayers = event.plugin.server.onlinePlayers
         for (player in onlinePlayers) {
             val openInventory = FrameAdapter.getTopInventorySafe(player)
-            if (openInventory?.holder is GUIEventHandler) {
+            if (openInventory?.holder is GuiEventHandler) {
                 player.closeInventory()
             }
         }

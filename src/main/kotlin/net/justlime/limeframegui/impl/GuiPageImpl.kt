@@ -1,9 +1,9 @@
 package net.justlime.limeframegui.impl
 
-import net.justlime.limeframegui.handler.GUIEventHandler
+import net.justlime.limeframegui.handler.GuiEventHandler
 import net.justlime.limeframegui.handler.GuiPage
-import net.justlime.limeframegui.models.GUISetting
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.utilities.item
 import org.bukkit.entity.Player
@@ -12,7 +12,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.inventory.Inventory
 
-class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHandler, override val currentPage: Int, private val setting: GUISetting) : GuiPage {
+class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHandler, override val currentPage: Int, private val setting: GuiSetting) : GuiPage {
 
     private var trackGuiPage: GuiPage = this
 
@@ -27,10 +27,10 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GUIEventHa
     override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
 
     // For Nested Page Only
-    override fun addPage(id: Int, setting: GUISetting, block: GuiPage.() -> Unit) = builder.addPage(id, setting, block)
+    override fun addPage(id: Int, setting: GuiSetting, block: GuiPage.() -> Unit) = builder.addPage(id, setting, block)
 
     // For Nested Page Only
-    override fun addPage(setting: GUISetting, block: GuiPage.() -> Unit) = builder.addPage(setting, block)
+    override fun addPage(setting: GuiSetting, block: GuiPage.() -> Unit) = builder.addPage(setting, block)
 
     override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
         val newItem = item.clone()
