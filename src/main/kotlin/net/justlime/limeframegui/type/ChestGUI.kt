@@ -37,15 +37,8 @@ class ChestGUI(val setting: GuiSetting, val block: ChestGUIBuilder.() -> Unit = 
     }
 
     fun openAsync(player: Player, page: Int? = null) {
-        // Prepare the Style Context for this session
-        val context = setting.style.copy().apply {
-            viewer = player
-            if (offlinePlayer == null) offlinePlayer = player
-        }
+        //TODO
 
-        // Start the Session for player).
-        val session = GuiSession(this, context)
-        session.startAsync(page)
     }
 
 

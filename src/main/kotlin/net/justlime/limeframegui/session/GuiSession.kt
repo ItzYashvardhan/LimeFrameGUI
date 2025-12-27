@@ -61,33 +61,6 @@ class GuiSession(private val blueprint: ChestGUI,  val context: GuiStyleSheet) {
 
     }
 
-    fun startAsync(initialPage: Int? = null){
-        builder = ChestGUIBuilder(this, blueprint.setting)
-        builder.apply(blueprint.block)
-        buffer = builder.buffer
-        handler = builder.build()
-
-        if (builder.pages[0] != null) globalPage = builder.pages[0] ?: throw IllegalStateException("Cannot start a GUI Session without a global page in the builder")
-
-        // Smart Page Selection
-        val minPageId = if (builder.pages.size == 1) 0 else builder.pages.keys.filter { it != 0 }.minOrNull() ?: 1
-        val finalPageId = initialPage ?: minPageId
-
-        // Render Pages
-        if (buffer == null) PerformanceMonitor.measure("FULL PAGES") {
-            builder.pages.forEach { (pageId, guiPage) ->
-                renderPage(pageId, guiPage)
-            }
-        }
-
-        // Lazy Render
-        if (buffer != null) PerformanceMonitor.measure("LAZY PAGES") {
-            renderBufferPages(finalPageId)
-        }
-
-        handler.open(viewer, finalPageId)
-    }
-
     fun bufferPage(pageId: Int) {
         val buffer = this@GuiSession.buffer ?: run {
             handler.open(viewer, pageId)
