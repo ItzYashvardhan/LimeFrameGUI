@@ -6,33 +6,32 @@ import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.utilities.item
+import net.justlime.limeframegui.utilities.setItem
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
-import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.inventory.Inventory
 
-class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHandler, override val currentPage: Int, private val setting: GuiSetting) : GuiPage {
+class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHandler, override val viewerPage: Int, private val setting: GuiSetting) : GuiPage {
 
     private var trackGuiPage: GuiPage = this
 
-    override var inventory = handler.createPageInventory(currentPage, setting)
-
+    override var inventory = handler.createPageInventory(viewerPage, setting)
     override val itemCache = mutableMapOf<Int, GuiItem>()
-
     override val style: GuiStyleSheet = builder.session.context
+    override var isRendered: Boolean = false // Default to not rendered
 
     override fun getItems(): Map<Int, GuiItem> = itemCache
 
-    override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>()
+    override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, GuiClick.(InventoryClickEvent) -> Unit>>()
 
     // For Nested Page Only
-    override fun addPage(id: Int, setting: GuiSetting, block: GuiPage.() -> Unit) = builder.addPage(id, setting, block)
+    override fun addPage(id: Int, setting: GuiSetting, block: GuiPage.() -> Unit) = builder.addPage(id, setting,true, block)
 
     // For Nested Page Only
-    override fun addPage(setting: GuiSetting, block: GuiPage.() -> Unit) = builder.addPage(setting, block)
+    override fun addPage(setting: GuiSetting, block: GuiPage.() -> Unit) = builder.addPage(setting,true ,block)
 
-    override fun addItem(item: GuiItem, onClick: (InventoryClickEvent) -> Unit): Int {
+    override fun addItem(item: GuiItem, onClick: GuiClick.(InventoryClickEvent) -> Unit): Int {
         val newItem = item.clone()
 
         //Handle for single page (Global Page) or nav is disabled
@@ -59,24 +58,25 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHa
 
         //Create New Page (If current is full)
         var resultSlot = -1
-        builder.addPage(setting) {
+        builder.addPage(setting,true) {
             trackGuiPage = this
             resultSlot = this.addItem(newItem, onClick)
         }
         return resultSlot
     }
 
-    override fun addItem(items: List<GuiItem>, onClick: ((GuiItem, InventoryClickEvent) -> Unit)) {
+    override fun addItem(items: List<GuiItem>, onClick: GuiClick.(GuiItem, InventoryClickEvent) -> Unit) {
         items.forEach { guiItem ->
-            addItem(guiItem) { event -> onClick.invoke(guiItem, event) }
+            addItem(guiItem) { event -> onClick.invoke(this, guiItem, event) }
         }
     }
 
-    override fun setItem(index: Int, item: GuiItem, onClick: ((InventoryClickEvent) -> Unit)): Int {
+    override fun setItem(index: Int, item: GuiItem,dynamic: Boolean, onClick: GuiClick.(InventoryClickEvent) -> Unit): Int {
         val newItem = item.clone()
         if (index < inventory.size) {
             itemCache[index] = newItem
             registerClickEvent(newItem, index, onClick)
+            if (dynamic) inventory.setItem(index, newItem)
             return index
         }
         return -1
@@ -85,19 +85,19 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHa
     override fun remove(slot: Int): GuiPage {
 
         // Ensure the item being removed is a dynamically added one on the current page.
-        if (builder.pages[currentPage]?.trackAddItemSlot?.containsKey(slot) != true) {
+        if (builder.pages[viewerPage]?.trackAddItemSlot?.containsKey(slot) != true) {
             // If not, just clear the slot and do nothing else.
             inventory.setItem(slot, null)
 
             itemCache.remove(slot)
 
-            handler.itemClickHandler[currentPage]?.remove(slot)
+            handler.itemClickHandler[viewerPage]?.remove(slot)
             return this
         }
 
         // 1. Collect all dynamically added items from all pages into a single, ordered list.
         // This list will represent the continuous space that items occupy.
-        val dynamicItems = mutableListOf<Triple<Int, Int, Pair<GuiItem, (InventoryClickEvent) -> Unit>>>()
+        val dynamicItems = mutableListOf<Triple<Int, Int, Pair<GuiItem, GuiClick.(InventoryClickEvent) -> Unit>>>()
         builder.pages.toSortedMap().forEach { (pageId, guiPage) ->
             // Sort by slot to ensure items on the same page are in order.
             guiPage.trackAddItemSlot.toSortedMap().forEach { (itemSlot, itemData) ->
@@ -107,7 +107,7 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHa
 
         // 2. Find the linear index of the item we need to remove.
         val removalIndex = dynamicItems.indexOfFirst { (pageId, itemSlot, _) ->
-            pageId == currentPage && itemSlot == slot
+            pageId == viewerPage && itemSlot == slot
         }
 
         // This should always be found due to the initial check, but as a safeguard:
@@ -126,7 +126,7 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHa
             val targetPage = builder.pages[targetPageId] ?: continue
 
             // Move the source item to the target slot.
-            targetPage.setItem(targetSlot, sourceItemData, sourceClickHandler)
+            targetPage.setItem(targetSlot, sourceItemData, false,sourceClickHandler)
             targetPage.trackAddItemSlot[targetSlot] = sourceItem.third
         }
 
@@ -155,17 +155,12 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHa
         throw IllegalStateException("Navigation can only be configured at the top-level GUI builder. Its not ideal to be used in nested pages")
     }
 
-    override fun onOpen(handler: (InventoryOpenEvent) -> Unit) {
-        this.handler.pageOpenHandlers[currentPage] = handler
-
+    override fun onClick(event: (InventoryClickEvent) -> Unit) {
+        handler.pageClickHandlers[viewerPage] = event
     }
 
-    override fun onClose(handler: (InventoryCloseEvent) -> Unit) {
-        this.handler.pageCloseHandlers[currentPage] = handler
-    }
-
-    override fun onClick(handler: (InventoryClickEvent) -> Unit) {
-        this.handler.pageClickHandlers[currentPage] = handler
+    override fun onOpen(block: (InventoryOpenEvent) -> Unit) {
+        handler.pageOpenHandlers[viewerPage] = block
     }
 
     override fun openPage(player: Player, id: Int) {
@@ -215,11 +210,12 @@ class GuiPageImpl(val builder: ChestGUIBuilder, override val handler: GuiEventHa
         }
     }
 
-    private fun registerClickEvent(item: GuiItem, slot: Int, onClick: (InventoryClickEvent) -> Unit) {
-        handler.itemClickHandler.computeIfAbsent(currentPage) { mutableMapOf() }[slot] = { event ->
+    private fun registerClickEvent(item: GuiItem, slot: Int, onClick: GuiClick.(InventoryClickEvent) -> Unit) {
+        handler.itemClickHandler.computeIfAbsent(viewerPage) { mutableMapOf() }[slot] = { event ->
             event.item = item
             item.onClick(event)
-            onClick(event)
+            val guiClick = GuiClick(event)
+            onClick(guiClick, event)
         }
     }
 }

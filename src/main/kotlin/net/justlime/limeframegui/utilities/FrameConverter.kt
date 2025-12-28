@@ -11,7 +11,7 @@ import org.bukkit.util.io.BukkitObjectOutputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.sql.Timestamp
-import java.util.Base64
+import java.util.*
 
 object FrameConverter {
     private val gson = GsonBuilder().registerTypeAdapter(Timestamp::class.java, JsonSerializer<Timestamp> { src, _, _ ->
@@ -29,10 +29,8 @@ object FrameConverter {
     fun serializeItemStack(item: ItemStack): String {
         val outputStream = ByteArrayOutputStream()
         val bukkitOut = BukkitObjectOutputStream(outputStream)
-        try {
+        bukkitOut.use { bukkitOut ->
             bukkitOut.writeObject(item)
-        } finally {
-            bukkitOut.close()
         }
         return Base64.getEncoder().encodeToString(outputStream.toByteArray())
     }
@@ -43,10 +41,8 @@ object FrameConverter {
             val bytes = Base64.getDecoder().decode(data)
             val inputStream = ByteArrayInputStream(bytes)
             val bukkitIn = BukkitObjectInputStream(inputStream)
-            try {
+            bukkitIn.use { bukkitIn ->
                 bukkitIn.readObject() as? ItemStack
-            } finally {
-                bukkitIn.close()
             }
         } catch (e: Exception) {
             e.printStackTrace()

@@ -5,9 +5,9 @@ import net.justlime.limeframegui.enums.ChestGuiActions
 import net.justlime.limeframegui.handler.GuiEventHandler
 import net.justlime.limeframegui.handler.GuiPage
 import net.justlime.limeframegui.models.FrameReservedSlotPage
-import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.models.GuiBuffer
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.session.GuiSession
 import net.justlime.limeframegui.type.ChestGUI
 import net.justlime.limeframegui.utilities.toGuiItem
@@ -25,38 +25,22 @@ import org.bukkit.inventory.Inventory
 class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
 
     val setting: GuiSetting = originalSetting.clone()
-    var buffer : GuiBuffer? = null
-
-
-    /**
-     * The lazy-loading store. All items that don't fit on manually-defined
-     * pages will be stored here, waiting to be rendered.
-     */
-    private val paginationStore = mutableListOf<Pair<GuiItem, (InventoryClickEvent) -> Unit>>() //TODO
-
-    /**
-     * Tracks the highest ID of a page you defined manually (e.g., in an `addPage(0) {}` block).
-     * This tells us where the lazy-loaded pages should begin.
-     */
-    private var lastManualPageId = 0 //TODO
-
-    /**
-     * The total number of pages, combining manual and paginated ones.
-     * This will be calculated once, after the setup block.
-     */
-    private var totalPageCount = 0 //TODO
+    var buffer: GuiBuffer? = null
 
     /**Pages are temporarily stored here before being moved to the handler.*/
     val pages = mutableMapOf<Int, GuiPage>()
 
     /**Main Handler for Registering Events**/
-    private val guiHandler: GuiEventHandler = GuiEventImpl(setting)
+    private val handler: GuiEventHandler = GuiEventImpl(setting)
 
     // All configuration steps are queued as prioritized actions to be executed in order during build().
-    private val actions = mutableListOf<Pair<ChestGuiActions, () -> Unit>>()
+    val actions = mutableListOf<Pair<ChestGuiActions, () -> Unit>>()
     private var currentExecutingAction: ChestGuiActions? = null
 
     val reservedSlot = FrameReservedSlotPage()
+
+    // Store the navigation block to re-apply it to new pages
+    var navigationBlock: (Navigation.() -> Unit)? = null
 
     init {
         // The global page (ID 0) is created immediately to hold shared items.
@@ -67,33 +51,19 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
 
     fun onOpen(handler: (InventoryOpenEvent) -> Unit) {
         actions.add(ChestGuiActions.GLOBAL_EVENT to {
-            guiHandler.globalOpenHandler = handler
+            this.handler.globalOpenHandler = handler
         })
     }
 
-    fun onPageOpen(handler: (InventoryOpenEvent) -> Unit) {
-        actions.add(ChestGuiActions.PAGE_EVENT to {
-            // Iterate over the pages defined in the builder, not the handler's (likely empty) map.
-            pages.keys.forEach { pageId ->
-                guiHandler.pageOpenHandlers[pageId] = handler
-            }
-        })
-    }
+
+
 
     fun onClose(handler: (InventoryCloseEvent) -> Unit) {
-        actions.add(ChestGuiActions.GLOBAL_EVENT to { guiHandler.globalCloseHandler = handler })
-    }
-
-    fun onPageClose(handler: (InventoryCloseEvent) -> Unit) {
-        actions.add(ChestGuiActions.PAGE_EVENT to {
-            pages.keys.forEach { pageId ->
-                guiHandler.pageCloseHandlers[pageId] = handler
-            }
-        })
+        actions.add(ChestGuiActions.GLOBAL_EVENT to { this.handler.globalCloseHandler = handler })
     }
 
     fun onClick(handler: (InventoryClickEvent) -> Unit) {
-        actions.add(ChestGuiActions.GLOBAL_EVENT to { guiHandler.globalClickHandler = handler })
+        actions.add(ChestGuiActions.GLOBAL_EVENT to { this.handler.globalClickHandler = handler })
     }
 
     // Page Management
@@ -101,7 +71,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
      * Adds a page with a specific, unique ID.
      * Throws an error if the ID is already in use or is the reserved global ID.
      */
-    fun addPage(id: Int, setting: GuiSetting = this.setting, block: GuiPage.() -> Unit) {
+    fun addPage(id: Int, setting: GuiSetting = this.setting, skipWaiting: Boolean = false, block: GuiPage.() -> Unit) {
         if (setting.style.isEmpty()) setting.style = this.setting.style
         val runBlock = {
             if (LimeFrameAPI.debugging) println("Starting Execution of Page $id")
@@ -110,10 +80,11 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
             val newPage = createPage(id, setting)
             pages[id] = newPage
             newPage.apply(block)
+
             if (LimeFrameAPI.debugging) println("Finished Execution of Page $id")
         }
 
-        if (currentExecutingAction == ChestGuiActions.PAGE_ITEMS) {
+        if (currentExecutingAction == ChestGuiActions.PAGE_ITEMS || skipWaiting) {
             runBlock() // We are inside PAGE_ITEMS, run immediately
         } else {
             actions += ChestGuiActions.PAGE_ITEMS to runBlock // Otherwise queue
@@ -124,18 +95,18 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
     /**
      * Adds a page with an automatically assigned, incremental ID. This is the recommended approach.
      */
-    fun addPage(setting: GuiSetting = this.setting, block: GuiPage.() -> Unit) {
+    fun addPage(setting: GuiSetting = this.setting, skipWaiting: Boolean = false, block: GuiPage.() -> Unit) {
         if (setting.style.isEmpty()) setting.style = this.setting.style
         val runBlock = {
             val newId = (pages.keys.maxOrNull() ?: ChestGUI.GLOBAL_PAGE_ID) + 1
             if (LimeFrameAPI.debugging) println("Starting Execution of Page $newId")
             val newPage = createPage(newId, setting)
             pages[newId] = newPage
-            newPage.apply(block)
+            newPage.apply(block) // <-- This will call addItem() and setItem() which is store on addPage{..}
             if (LimeFrameAPI.debugging) println("Finished Execution of Page $newId")
         }
 
-        if (currentExecutingAction == ChestGuiActions.PAGE_ITEMS) {
+        if (currentExecutingAction == ChestGuiActions.PAGE_ITEMS || skipWaiting) {
             runBlock()
         } else {
             actions += ChestGuiActions.PAGE_ITEMS to runBlock
@@ -147,7 +118,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
      * Creates a new page, correctly copying all items and handlers from the global page.
      */
     private fun createPage(pageId: Int, setting: GuiSetting): GuiPage {
-        val newPage = GuiPageImpl(this, guiHandler, pageId, setting,)
+        val newPage = GuiPageImpl(this, handler, pageId, setting)
 
         val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] as? GuiPageImpl ?: return newPage
 
@@ -172,11 +143,11 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
         }
 
         // Copy Click Handlers
-        guiHandler.itemClickHandler[ChestGUI.GLOBAL_PAGE_ID]?.forEach { (slot, handler) ->
+        handler.itemClickHandler[ChestGUI.GLOBAL_PAGE_ID]?.forEach { (slot, handler) ->
             val isDynamic = globalPage.trackAddItemSlot.containsKey(slot)
 
             if (!isDynamic) {
-                val pageHandlers = guiHandler.itemClickHandler.computeIfAbsent(pageId) { mutableMapOf() }
+                val pageHandlers = this.handler.itemClickHandler.computeIfAbsent(pageId) { mutableMapOf() }
                 pageHandlers[slot] = handler
             }
         }
@@ -185,7 +156,7 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
     }
 
     // Item Management
-    fun addItem(item: GuiItem?, onClick: (InventoryClickEvent) -> Unit = {}) {
+    fun addItem(item: GuiItem?, onClick: GuiClick.(InventoryClickEvent) -> Unit = {}) {
         val runBlock = to@{
             if (item != null) {
                 val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] ?: return@to
@@ -197,61 +168,62 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
 
     }
 
-    fun addItem(items: List<GuiItem>, onClick: ((InventoryClickEvent) -> Unit) = { _ -> }) {
+    fun addItem(items: List<GuiItem>, onClick: GuiClick.(GuiItem, InventoryClickEvent) -> Unit = { _, _ -> }) {
         val runBlock = to@{
             if (items.isEmpty()) return@to
             val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] ?: return@to
 
             items.forEach { guiItem ->
-                globalPage.addItem(guiItem) { event -> onClick.invoke(event) }
+                globalPage.addItem(guiItem) { event -> onClick.invoke(this, guiItem, event) }
             }
         }
         if (currentExecutingAction == ChestGuiActions.GLOBAL_ITEMS) runBlock()
         else actions += ChestGuiActions.GLOBAL_ITEMS to runBlock
     }
 
-    fun setItem(item: GuiItem?, onClick: (InventoryClickEvent) -> Unit = {}) {
+    fun setItem(item: GuiItem?, onClick: GuiClick.(InventoryClickEvent) -> Unit = {}) {
         actions += ChestGuiActions.GLOBAL_ITEMS to {
             if (item != null) {
                 val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] ?: return@to
 
                 if (item.slot != null) {
-                    globalPage.setItem(item.slot!!, item, onClick)
+                    globalPage.setItem(item.slot!!, item, false, onClick)
                 }
 
                 if (item.slotList.isNotEmpty()) {
                     item.slotList.forEach { slot ->
-                        globalPage.setItem(slot, item, onClick)
+                        globalPage.setItem(slot, item, false, onClick)
                     }
                 }
             }
         }
     }
 
-    fun setItem(item: GuiItem?, slot: Int?, onClick: (InventoryClickEvent) -> Unit = {}) {
+    fun setItem(item: GuiItem?, slot: Int?, onClick: GuiClick.(InventoryClickEvent) -> Unit = {}) {
         actions += ChestGuiActions.GLOBAL_ITEMS to {
             if (slot != null && item != null) {
                 val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] ?: return@to
-                globalPage.setItem(slot, item, onClick)
+                globalPage.setItem(slot, item, false, onClick)
             }
         }
     }
 
-    fun setItem(items: GuiItem?, slot: List<Int>, onClick: ((InventoryClickEvent) -> Unit) = { _ -> }) {
+    fun setItem(items: GuiItem?, slot: List<Int>, onClick: GuiClick.(InventoryClickEvent) -> Unit = { _ -> }) {
         actions += ChestGuiActions.GLOBAL_ITEMS to {
             if (items != null && slot.isNotEmpty()) {
                 val globalPage = pages[ChestGUI.GLOBAL_PAGE_ID] ?: return@to
 
                 slot.forEach { currentSlot ->
-                    globalPage.setItem(currentSlot, items) { event -> onClick.invoke(event) }
+                    globalPage.setItem(currentSlot, items) { event -> onClick.invoke(this, event) }
                 }
             }
         }
     }
 
     fun nav(block: Navigation.() -> Unit) {
+        this.navigationBlock = block
 
-        val navigation = Navigation(this, guiHandler).apply(block)
+        val navigation = Navigation(this, handler).apply(block)
 
 
         reservedSlot.enableNavSlotReservation = true
@@ -287,10 +259,34 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
         }
 
         pages.forEach { (id, page) ->
-            guiHandler.pageInventories[id] = page.inventory
+            handler.pageInventories[id] = page.inventory
         }
 
-        return guiHandler
+        return handler
+    }
+
+    fun softRefresh(){
+        session.softRefresh()
+        val block = navigationBlock ?: return
+        val navigation = Navigation(this, handler).apply(block)
+        navigation.build()
+    }
+
+    /**
+     * Refreshes the GUI for the current session.
+     *
+     * This method should be called when the underlying data of the GUI changes
+     * and you want to update the displayed items for the player. It re-renders
+     * all pages and re-applies navigation elements.
+     *
+     * Note: This method should not be called within `onOpen` or `addPage` blocks
+     * as it can lead to infinite loops or unexpected behavior during GUI construction.
+     */
+    fun refresh() {
+        session.refresh()
+        val block = navigationBlock ?: return
+        val navigation = Navigation(this, handler).apply(block)
+        navigation.build()
     }
 
 }

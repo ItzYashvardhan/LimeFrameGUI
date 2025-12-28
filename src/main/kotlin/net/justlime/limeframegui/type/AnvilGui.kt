@@ -1,19 +1,19 @@
 package net.justlime.limeframegui.type
 
-import net.justlime.limeframegui.impl.AnvilEventImpl
-import net.justlime.limeframegui.impl.AnvilGUIBuilder
+import net.justlime.limeframegui.impl.AnvilGuiEventImpl
+import net.justlime.limeframegui.impl.AnvilGuiBuilder
 import net.justlime.limeframegui.models.AnvilGuiSetting
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiStyleSheet
 import org.bukkit.Material
 import org.bukkit.entity.Player
 
-class AnvilGUI(private val setting: AnvilGuiSetting, private val block: AnvilGUIBuilder.() -> Unit = {}) {
+class AnvilGui(private val setting: AnvilGuiSetting, private val block: AnvilGuiBuilder.() -> Unit = {}) {
 
     /**
      * Convenience Constructor for creating simple Anvils without a config object.
      */
-    constructor(title: String, label: String = "", block: AnvilGUIBuilder.() -> Unit = {}) : this(
+    constructor(title: String, label: String = "", block: AnvilGuiBuilder.() -> Unit = {}) : this(
         AnvilGuiSetting(
             title = title,
             label = label,
@@ -26,7 +26,7 @@ class AnvilGUI(private val setting: AnvilGuiSetting, private val block: AnvilGUI
     )
 
     fun open(player: Player) {
-        val builder = AnvilGUIBuilder()
+        val builder = AnvilGuiBuilder()
         builder.title = setting.title
         builder.label = setting.label
         builder.style = setting.style.copy()
@@ -42,6 +42,6 @@ class AnvilGUI(private val setting: AnvilGuiSetting, private val block: AnvilGUI
 
         builder.apply(block)
         val runtimeSetting = builder.buildSetting()
-        AnvilEventImpl(player, runtimeSetting, builder).open()
+        AnvilGuiEventImpl(player, runtimeSetting, builder).open()
     }
 }

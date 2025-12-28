@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.models
 
-import loader.SoundLoader
+import net.justlime.limeframegui.loader.SoundLoader
 import net.justlime.limeframegui.integration.FoliaLibHook
 import org.bukkit.Bukkit
 import org.bukkit.Sound

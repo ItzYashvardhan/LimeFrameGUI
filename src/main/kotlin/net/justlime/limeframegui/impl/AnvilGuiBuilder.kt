@@ -7,7 +7,7 @@ import net.justlime.limeframegui.models.GuiStyleSheet
 import org.bukkit.Material
 import org.bukkit.entity.Player
 
-class AnvilGUIBuilder {
+class AnvilGuiBuilder {
 
     // --- Configuration ---
     var title: String = "Anvil GUI"

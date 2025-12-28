@@ -9,7 +9,7 @@ import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
 
-class Navigation(val builder: ChestGUIBuilder, private val handler: GuiEventHandler) {
+class Navigation(private val builder: ChestGUIBuilder, private val handler: GuiEventHandler) {
 
     // --- User-Overridable Settings ---
     var nextItem: GuiItem = GuiItem(Material.ARROW, "§aNext Page")
@@ -37,7 +37,7 @@ class Navigation(val builder: ChestGUIBuilder, private val handler: GuiEventHand
             if (currentPage < maxPage) {
                 if (builder.buffer == null) handler.open(player, currentPage + 1) else builder.session.bufferPage(currentPage + 1)
             } else {
-                player.sendMessage("§cYou are on the last page.")
+                player.sendMessage("§cYou are on the last page.") // <-- This shouldn't happen
             }
         }
 
@@ -49,7 +49,7 @@ class Navigation(val builder: ChestGUIBuilder, private val handler: GuiEventHand
             if (currentPage > minPage) {
                 if (builder.buffer == null) handler.open(player, currentPage - 1) else builder.session.bufferPage(currentPage - 1)
             } else {
-                player.sendMessage("§cYou are on the first page.")
+                player.sendMessage("§cYou are on the first page.") // <-- This shouldn't happen
             }
         }
         val minPageId = builder.pages.keys.filter { it != ChestGUI.GLOBAL_PAGE_ID }.minOrNull() ?: return
@@ -60,11 +60,21 @@ class Navigation(val builder: ChestGUIBuilder, private val handler: GuiEventHand
             val lastSlot = page.inventory.size - 1
             val lastRowFirstSlot = lastSlot - 8
 
-            if (id != ChestGUI.GLOBAL_PAGE_ID && id != minPageId) if (prevSlot == -1) page.setItem(lastRowFirstSlot + this@Navigation.margin, prevItem, prevOnClick)
-            else page.setItem(prevSlot + this@Navigation.margin, prevItem, prevOnClick)
+            if (id != ChestGUI.GLOBAL_PAGE_ID && id != minPageId) {
+                if (prevSlot == -1) {
+                    page.setItem(lastRowFirstSlot + this@Navigation.margin, prevItem, true) { event -> prevOnClick(event) }
+                } else {
+                    page.setItem(prevSlot + this@Navigation.margin, prevItem, true) { event -> prevOnClick(event) }
+                }
+            }
 
-            if (id != ChestGUI.GLOBAL_PAGE_ID && id != maxPageId) if (nextSlot == -1) page.setItem(lastSlot - this@Navigation.margin, nextItem, nextOnClick)
-            else page.setItem(nextSlot - this@Navigation.margin, nextItem, nextOnClick)
+            if (id != ChestGUI.GLOBAL_PAGE_ID && id != maxPageId) {
+                if (nextSlot == -1) {
+                    page.setItem(lastSlot - this@Navigation.margin, nextItem, true) { event -> nextOnClick(event) }
+                } else {
+                    page.setItem(nextSlot - this@Navigation.margin, nextItem, true) { event -> nextOnClick(event) }
+                }
+            }
 
         }
         if (LimeFrameAPI.debugging) println("Finished Building Navigation")

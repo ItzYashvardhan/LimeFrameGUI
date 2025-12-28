@@ -1,6 +1,6 @@
 package net.justlime.limeframegui.color
 
-import loader.FontLoader
+import net.justlime.limeframegui.loader.FontLoader
 import me.clip.placeholderapi.PlaceholderAPI
 import net.justlime.limeframegui.enums.CapsState
 import net.justlime.limeframegui.enums.ColorType

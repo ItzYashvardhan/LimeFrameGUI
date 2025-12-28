@@ -1,4 +1,4 @@
-package loader
+package net.justlime.limeframegui.loader
 
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.models.GuiSound

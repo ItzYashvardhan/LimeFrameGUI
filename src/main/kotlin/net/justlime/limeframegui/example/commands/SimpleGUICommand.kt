@@ -166,7 +166,7 @@ class SimpleGUICommand() : CommandHandler {
 
             val items = mutableListOf(staticExtraItem, dynamicExtraItem).toList()
 
-            addItem(items) { event ->
+            addItem(items) { item, event ->
                 event.whoClicked.sendMessage("You click on ${event.item?.name}")
                 event.whoClicked.sendMessage("You click on ${event.item?.currentName}")
                 when (event.click) {
@@ -280,7 +280,7 @@ private object GuiManager {
 
 private fun formattedPage(setting: GuiSetting, player: Player) {
 
-    setting.style.placeholder["{world}"]  =  player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt()
+    setting.style.placeholder["{world}"] = player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt()
     ChestGUI(setting) {
 
         val item3 = GuiItem(

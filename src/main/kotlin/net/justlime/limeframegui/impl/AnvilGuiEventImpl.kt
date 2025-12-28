@@ -11,9 +11,9 @@ import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import net.wesjd.anvilgui.AnvilGUI
 import org.bukkit.entity.Player
-import java.util.Collections
+import java.util.*
 
-class AnvilEventImpl(private val player: Player, private val setting: AnvilGuiSetting, private val builder: AnvilGUIBuilder) {
+class AnvilGuiEventImpl(private val player: Player, private val setting: AnvilGuiSetting, private val builder: AnvilGuiBuilder) {
 
     fun open() {
         try {
