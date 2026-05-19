@@ -1,7 +1,7 @@
 
 plugins {
     kotlin("jvm") version "2.1.21"
-    id("com.gradleup.shadow") version "8.3.0"
+    id("com.gradleup.shadow") version "8.3.6"
     `maven-publish`
 }
 
@@ -29,10 +29,10 @@ kotlin {
 }
 
 dependencies {
-    compileOnly(libs.spigot)
+    implementation(libs.spigot.api)
     compileOnly(libs.authlib)
-    compileOnly(libs.kotlin)
-    compileOnly(libs.kotlin.reflection)
+    compileOnly(libs.kotlin.stdlib)
+    compileOnly(libs.kotlin.reflect)
     compileOnly(libs.annotation)
     compileOnly(libs.adventure.text.minimessage)
     compileOnly(libs.adventure.text.serializer.legacy)
@@ -77,13 +77,35 @@ publishing {
 
 }
 
-// === SHADOW COPY TASK ===
-tasks.register<Copy>("shadowJarCopy") {
-    group = "build"
-    description = "Copy shadowJar jar to local test server"
+// === TEST SERVER CONFIGURATION ===
+val testServerDir = file("server")
+
+tasks.shadowJar {
+    minimize()
+    archiveFileName.set("LimeFrameGUI.jar")
+}
+
+// The Copy Task
+tasks.register<Copy>("copyToServer") {
+    group = "LimeFrameGUI" // Groups it neatly in the IntelliJ Gradle panel
+    description = "Copies the compiled plugin to the local test server's plugins folder."
     dependsOn("shadowJar")
-    from(tasks.shadowJar.get().outputs.files.singleFile)
-    into("E:/Minecraft/servers/Development/PaperMC-1.21.10/plugins")
+
+    // Dynamically grabs the exact output file from shadowJar (inside build/libs/)
+    from(tasks.shadowJar.flatMap { it.archiveFile })
+    into(testServerDir.resolve("plugins"))
+}
+
+// The Run Task
+tasks.register<Exec>("runServer") {
+    group = "LimeFrameGUI"
+    description = "Builds, copies, and starts the test server directly in the IDE."
+    dependsOn("copyToServer")
+
+    workingDir = testServerDir
+
+    commandLine("java", "-Xmx2G", "-Xms2G", "-jar", "paper-26.1.2-60.jar", "nogui")
+    standardInput = System.`in`
 }
 
 

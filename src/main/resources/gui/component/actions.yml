@@ -1,0 +1,62 @@
+
+display_stats:
+  click:
+    - "[message] <green> Your stats"
+    - "[sound] error"
+    - "[run] fetch_stats"
+
+# 1. The button triggers this first
+wipe_team_check:
+  requirements:
+    - "permission: betterteams.admin"
+  click:
+    - "[message] <green>Admin team wipe authorized!"
+    - "[code] wipe_team_admin_logic"
+  deny:
+    # If they AREN'T an admin, trigger the Mod check!
+    - "[action] wipe_team_mod_check"
+
+# 2. The Fallback Check
+wipe_team_mod_check:
+  requirements:
+    - "permission: betterteams.mod"
+  left-click:
+    - "[message] <yellow>Moderator team wipe authorized."
+    - "[run] wipe_team_mod_logic"
+
+  shift-left-click:
+    - "[message] you have shift click it"
+  deny:
+    - "[sound] error"
+    - "[message] <red>You are neither an Admin nor a Mod!"
+
+ckeck_balance:
+  left-click:
+    when:
+      value: {player_balance}
+      result:
+        100:
+          - "[message] You are poor"
+        1000:
+          - "[message] You are middle class"
+        10000:
+          - "[message] You are rich"
+
+
+player_stat_check:
+    sequence:
+      1:
+        requirements:
+        - "[permission] betterteams.admin"
+        click:
+          - "[message] <green>Admin team wipe authorized!"
+          - "[code] wipe_team_admin_logic"
+      2:
+        requirements:
+        - "[permission] betterteams.mod"
+        click:
+          - "[message] <yellow>Moderator team wipe authorized."
+      else:
+        click:
+          - "[message] You are a normal player"
+

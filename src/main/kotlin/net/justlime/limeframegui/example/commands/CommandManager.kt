@@ -1,6 +1,5 @@
 package net.justlime.limeframegui.example.commands
 
-import net.justlime.limeframegui.handler.CommandHandler
 import org.bukkit.plugin.java.JavaPlugin
 
 class CommandManager(val plugin: JavaPlugin) {

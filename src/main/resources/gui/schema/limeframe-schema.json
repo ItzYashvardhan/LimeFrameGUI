@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LimeFrameGUI Page Schema",
+  "type": "object",
+  "properties": {
+    "main": {
+      "type": "object",
+      "description": "Core settings for the GUI inventory.",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the inventory." },
+        "rows": { "type": "integer", "minimum": 1, "maximum": 6, "description": "Number of rows (1-6)." },
+        "type": { "type": "string", "enum": ["page", "template", "interface"], "description": "Defines how the engine processes this file." },
+        "inherit": { "type": "array", "items": { "type": "string" }, "description": "Templates to inherit from." },
+        "pattern": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The visual grid layout mapping characters to slots."
+        }
+      }
+    }
+  },
+  "patternProperties": {
+    "^(?!main$)[a-zA-Z0-9_.-]+$": {
+      "$ref": "#/definitions/guiItem"
+    }
+  },
+  "definitions": {
+    "guiItem": {
+      "type": "object",
+      "description": "A customized interactive GUI Item.",
+      "properties": {
+        "name": { "type": "string", "description": "The display name of the item. Supports {placeholders} and lang.keys." },
+        "char": { "type": "string", "maxLength": 1, "description": "The single character linking this item to the pattern grid." },
+        "lore": { "type": "array", "items": { "type": "string" }, "description": "The description text below the item name." },
+        "item": { "type": "string", "default": "STONE", "description": "The Bukkit Material name (e.g., PLAYER_HEAD, DIAMOND)." },
+        "texture": { "type": "string", "description": "Texture alias or Base64 string for custom heads." },
+        "action": { "type": "string", "description": "The action block to execute on click." },
+        "glow": { "type": "boolean", "default": false, "description": "Applies the enchanted glowing effect." },
+        "amount": { "type": "integer", "default": 1, "minimum": 1, "maximum": 64 },
+        "model": { "type": "integer", "description": "CustomModelData integer for resource packs." },
+        "slot": { "type": "integer", "description": "Hardcoded explicit slot (overrides pattern)." },
+        "slots": { "type": "array", "items": { "type": "integer" }, "description": "Hardcoded explicit slots." },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "HIDE_ENCHANTS", "HIDE_ATTRIBUTES", "HIDE_UNBREAKABLE", "HIDE_DESTROYS", "HIDE_PLACED_ON", "HIDE_POTION_EFFECTS", "HIDE_DYE"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

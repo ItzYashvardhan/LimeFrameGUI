@@ -1,11 +1,11 @@
 package net.justlime.limeframegui.color
 
-import net.justlime.limeframegui.loader.FontLoader
 import me.clip.placeholderapi.PlaceholderAPI
 import net.justlime.limeframegui.enums.CapsState
 import net.justlime.limeframegui.enums.ColorType
 import net.justlime.limeframegui.models.GuiStyleSheet
-import net.justlime.limeframegui.utilities.VersionHandler
+import net.justlime.limeframegui.registry.component.FontRegistry
+import net.justlime.limeframegui.util.VersionHandler
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.OfflinePlayer
@@ -73,11 +73,21 @@ object FontStyle {
     }
 
     private fun String.replaceLegacyToMini(): String {
-        return this.replace("§0", "<black>").replace("§1", "<dark_blue>").replace("§2", "<dark_green>").replace("§3", "<dark_aqua>").replace("§4", "<dark_red>").replace("§5", "<dark_purple>").replace("§6", "<gold>").replace("§7", "<gray>")
-            .replace("§8", "<dark_gray>").replace("§9", "<blue>").replace("§a", "<green>").replace("§b", "<aqua>").replace("§c", "<red>").replace("§d", "<light_purple>").replace("§e", "<yellow>").replace("§f", "<white>").replace("§l", "<bold>")
-            .replace("§m", "<strikethrough>").replace("§n", "<underlined>").replace("§o", "<italic>").replace("§r", "<reset>").replace("&0", "<black>").replace("&1", "<dark_blue>").replace("&2", "<dark_green>").replace("&3", "<dark_aqua>")
-            .replace("&4", "<dark_red>").replace("&5", "<dark_purple>").replace("&6", "<gold>").replace("&7", "<gray>").replace("&8", "<dark_gray>").replace("&9", "<blue>").replace("&a", "<green>").replace("&b", "<aqua>").replace("&c", "<red>")
-            .replace("&d", "<light_purple>").replace("&e", "<yellow>").replace("&f", "<white>").replace("&l", "<bold>").replace("&m", "<strikethrough>").replace("&n", "<underlined>").replace("&o", "<italic>").replace("&r", "<reset>")
+        return this.replace("§0", "<black>").replace("§1", "<dark_blue>").replace("§2", "<dark_green>")
+            .replace("§3", "<dark_aqua>").replace("§4", "<dark_red>").replace("§5", "<dark_purple>")
+            .replace("§6", "<gold>").replace("§7", "<gray>")
+            .replace("§8", "<dark_gray>").replace("§9", "<blue>").replace("§a", "<green>").replace("§b", "<aqua>")
+            .replace("§c", "<red>").replace("§d", "<light_purple>").replace("§e", "<yellow>").replace("§f", "<white>")
+            .replace("§l", "<bold>")
+            .replace("§m", "<strikethrough>").replace("§n", "<underlined>").replace("§o", "<italic>")
+            .replace("§r", "<reset>").replace("&0", "<black>").replace("&1", "<dark_blue>")
+            .replace("&2", "<dark_green>").replace("&3", "<dark_aqua>")
+            .replace("&4", "<dark_red>").replace("&5", "<dark_purple>").replace("&6", "<gold>").replace("&7", "<gray>")
+            .replace("&8", "<dark_gray>").replace("&9", "<blue>").replace("&a", "<green>").replace("&b", "<aqua>")
+            .replace("&c", "<red>")
+            .replace("&d", "<light_purple>").replace("&e", "<yellow>").replace("&f", "<white>").replace("&l", "<bold>")
+            .replace("&m", "<strikethrough>").replace("&n", "<underlined>").replace("&o", "<italic>")
+            .replace("&r", "<reset>")
 
     }
 
@@ -97,18 +107,32 @@ object FontStyle {
      * - Falls back to the server version if the viewer is null.
      * - Obeys <caps> and <no-caps> tags to override the default behavior.
      */
+    /**
+     * Converts a string to small caps with advanced tag support.
+     */
     fun String.toSmallCaps(viewer: Player?, useSmallCaps: Boolean?): String {
-        val fontMaps: Map<String, Map<String, String>> = FontLoader.capsFont
+        val fontMaps = FontRegistry.getFonts
         if (fontMaps.isEmpty() && useSmallCaps != true) return this
 
-        val bestVersionKey = fontMaps.keys.sortedWith { v1, v2 -> VersionHandler.compareVersions(VersionHandler.parseVersion(v2), VersionHandler.parseVersion(v1)) }.firstOrNull { versionKey ->
-            if (viewer != null) VersionHandler.isVersionSupported(viewer, versionKey)
-            else {
-                val serverVersion = VersionHandler.parseVersion(VersionHandler.getNativeServerVersion())
-                val keyVersion = VersionHandler.parseVersion(versionKey)
-                VersionHandler.compareVersions(serverVersion, keyVersion) >= 0
+        val bestVersionKey = fontMaps.keys.sortedWith { v1, v2 ->
+            VersionHandler.compareVersions(
+                VersionHandler.parseVersion(v2),
+                VersionHandler.parseVersion(v1)
+            )
+        }.firstOrNull { versionKey ->
+            val versionStr = if (viewer != null) {
+                VersionHandler.getClientVersion(viewer)
+            } else {
+                VersionHandler.getNativeServerVersion()
             }
+
+            val clientVersion = VersionHandler.parseVersion(versionStr)
+            val reqVersion = VersionHandler.parseVersion(versionKey)
+
+            // If the client version is greater than or equal to the required version, pick it!
+            VersionHandler.compareVersions(clientVersion, reqVersion) >= 0
         }
+
         val selectedFontMap = fontMaps[bestVersionKey]
 
         val result = StringBuilder()
@@ -117,6 +141,8 @@ object FontStyle {
 
         while (i < this.length) {
             val char = this[i]
+
+            // Check for tags like <caps> or <no-caps>
             if (char == '<') {
                 val closingIndex = this.indexOf('>', startIndex = i)
                 if (closingIndex != -1) {
@@ -141,18 +167,17 @@ object FontStyle {
             }
 
             // Append character, converting if necessary
-
             if (shouldConvert && selectedFontMap != null) {
                 when (char) {
-                    '&', '§' -> {
+                    '&', '§' -> { // Skip color codes
                         result.append(char)
                         if (i + 1 < this.length) {
                             result.append(this[i + 1])
                             i++
                         }
                     }
-
-                    else -> result.append(selectedFontMap[char.toString().lowercase()] ?: char)
+                    // Fetch the replacement character from our map
+                    else -> result.append(selectedFontMap[char.lowercaseChar()] ?: char)
                 }
             } else {
                 result.append(char)

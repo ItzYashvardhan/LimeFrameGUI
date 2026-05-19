@@ -1,0 +1,58 @@
+main:
+  title: "<gradient:#55FF55:#FFFF55>Example GUI</gradient>"
+  rows: 3 # Changed to plural (assuming your keys.inventoryRows is 'rows')
+  font-title: true
+  font-name: false
+  font-lore: false
+  pattern:
+    - "B B B B B B B B B"
+    - "B B B B B B B B B"
+    - "B B B B B B B B B"
+
+  pattern:
+    - "B B B B B B B B B"
+    - "B L L L L L L L B"
+    - "B L L B B B L L B"
+    - "B L B B B B B L B"
+    - "B B B < . > B B B"
+
+background:
+  name: " "
+  char: B
+  item: GREEN_STAINED_GLASS_PANE
+  flags: [ HIDE_ATTRIBUTES ]
+
+info:
+  name: lang.info_name
+  lore: ["lang.info_lore"]
+  item: PLAYER_HEAD
+  texture: "texture.decorations.question_mark"
+  slot: 11 # Single integer works here
+  click-sound: "sound.click"
+
+stats:
+  name: "<aqua>Your Stats (%player_name%)</aqua>"
+  lore:
+    - "<gray>Kills: <white>{player_kills}</white></gray>"
+    - "<gray>Deaths: <white>{player_deaths}</white></gray>"
+    - "<gray>Balance: <white>{vault_eco_balance_fixed}</white></gray>"
+  item: PLAYER_HEAD
+  texture: "texture.stats"
+  slot: 12
+  action: "actions.display_stats"
+
+back:
+  name: "lang.back_name"
+  lore: ["lang.back_lore"]
+  item: PLAYER_HEAD
+  texture: "texture.buttons.back"
+  slot: 13
+  click-sound: "sound.buttons.back"
+
+next:
+  name: "lang.next_name"
+  lore: ["lang.next_lore"]
+  item: PLAYER_HEAD
+  texture: "texture.buttons.next" # Fixed typo here!
+  slot: 15
+  click-sound: "sound.buttons.next" # Fixed typo here!

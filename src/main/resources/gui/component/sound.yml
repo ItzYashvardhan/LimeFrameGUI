@@ -1,0 +1,48 @@
+# Sound Configuration Syntax
+# Format: <SOUND_NAME>, [pitch], [volume], [delay]
+#
+# Suffixes (Optional):
+#  p = Pitch (0.5 - 2.0)
+#  v = Volume (0.1 - 2.0)
+#  d = Delay (in ticks, 20 ticks = 1 second)
+#
+# Examples:
+#  With-Suffix: BLOCK.NOTE_BLOCK.PLING, 2.0p, 40d  (High pitch, plays after 2 seconds)
+#  Without-Suffix: BLOCK.NOTE_BLOCK.PLING, 2.0, 1.0, 40
+#  Sequence-example:
+#       - BLOCK.NOTE_BLOCK.PLING, 1.8p, 5d
+#       - BLOCK.NOTE_BLOCK.PLING, 2.9p, 10d
+#       - BLOCK.NOTE_BLOCK.PLING, 2.0p, 12d
+
+# Play a Sound for first time when opening a team gui
+open-gui: BLOCK.NOTE_BLOCK.CHIME, 2.0
+
+#Global
+click: UI.BUTTON.CLICK
+error: BLOCK.NOTE_BLOCK.BASS
+permission-error: BLOCK.NOTE_BLOCK.BASS, 2.0
+yes-sound: ENTITY.VILLAGER.YES, 2.0
+no-sound: ENTITY.VILLAGER.NO, 2.0
+trade: ENTITY.VILLAGER.TRADE, 2.0
+selected: BLOCK.BEACON.POWER_SELECT, 2.0
+
+anvil-ui:
+  cancel-sound: click, 2.0
+  invalid-sound: BLOCK.BELL.USE, 0.1
+  submit-sound: BLOCK.ANVIL.PLACE, 1.4
+
+# Sample Sounds example for fun
+my-sound:
+  - click
+  - click,4d
+  - click,10d
+
+my-sound2:
+  - ENTITY.VILLAGER.TRADE,
+  - BLOCK.NOTE_BLOCK.CHIME,100d,2.0p
+  - ENTITY.VILLAGER.TRADE,200d
+
+my-sound3:
+  - my-sound + my-sound2
+  - my-sound + my-sound2,120d #Play whole pack after delay of 12 tick
+  - my-sound + my-sound2

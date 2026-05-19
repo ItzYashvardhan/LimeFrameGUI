@@ -1,8 +1,8 @@
 package net.justlime.limeframegui.listener
 
-import net.justlime.limeframegui.handler.GuiEventHandler
+import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.integration.SkinRestorerHook
-import net.justlime.limeframegui.utilities.FrameAdapter
+import net.justlime.limeframegui.util.FrameAdapter
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.server.PluginDisableEvent

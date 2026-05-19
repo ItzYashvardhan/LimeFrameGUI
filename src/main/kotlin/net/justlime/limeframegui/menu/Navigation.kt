@@ -1,0 +1,83 @@
+package net.justlime.limeframegui.menu
+
+import net.justlime.limeframegui.api.LimeFrameAPI
+import net.justlime.limeframegui.event.GuiEventHandler
+import net.justlime.limeframegui.builder.ChestGUIBuilder
+import net.justlime.limeframegui.models.GuiBuffer
+import net.justlime.limeframegui.models.GuiItem
+import org.bukkit.Material
+import org.bukkit.entity.Player
+import org.bukkit.event.inventory.InventoryClickEvent
+
+class Navigation(private val builder: ChestGUIBuilder, private val handler: GuiEventHandler) {
+
+    // --- User-Overridable Settings ---
+    var nextItem: GuiItem = GuiItem(Material.ARROW, "§aNext Page")
+    var prevItem: GuiItem = GuiItem(Material.ARROW, "§aPrevious Page")
+    var margin = 0
+
+    var nextSlot: Int = -1
+    var prevSlot: Int = -1
+
+    /**
+     * DSL for configuring Lazy Loading / Page Buffering.
+     */
+    fun buffer(block: GuiBuffer.() -> Unit = {}) {
+        if (builder.buffer == null) builder.buffer = GuiBuffer()
+        builder.buffer?.apply(block)
+    }
+
+    fun build() {
+        if (LimeFrameAPI.debugging) println("Building Navigation")
+        val nextOnClick = nextOnClick@{ event: InventoryClickEvent ->
+            val player = event.whoClicked as Player
+            val currentPage = handler.getCurrentPage(player) ?: return@nextOnClick
+            val maxPage = handler.pageInventories.keys.filter { it != ChestGUI.GLOBAL_PAGE_ID }.maxOrNull() ?: currentPage
+
+            if (currentPage < maxPage) {
+                if (builder.buffer == null) handler.open(player, currentPage + 1) else builder.session.bufferPage(currentPage + 1)
+            } else {
+                player.sendMessage("§cYou are on the last page.") // <-- This shouldn't happen
+            }
+        }
+
+        val prevOnClick = prevOnClick@{ event: InventoryClickEvent ->
+            val player = event.whoClicked as Player
+            val currentPage = handler.getCurrentPage(player) ?: return@prevOnClick
+            val minPage = handler.pageInventories.keys.filter { it != ChestGUI.GLOBAL_PAGE_ID }.minOrNull() ?: currentPage
+
+            if (currentPage > minPage) {
+                if (builder.buffer == null) handler.open(player, currentPage - 1) else builder.session.bufferPage(currentPage - 1)
+            } else {
+                player.sendMessage("§cYou are on the first page.") // <-- This shouldn't happen
+            }
+        }
+        val minPageId = builder.pages.keys.filter { it != ChestGUI.GLOBAL_PAGE_ID }.minOrNull() ?: return
+        val maxPageId = builder.pages.keys.filter { it != ChestGUI.GLOBAL_PAGE_ID }.maxOrNull() ?: return
+
+        builder.pages.forEach { (id, page) ->
+
+            val lastSlot = page.inventory.size - 1
+            val lastRowFirstSlot = lastSlot - 8
+
+            if (id != ChestGUI.GLOBAL_PAGE_ID && id != minPageId) {
+                if (prevSlot == -1) {
+                    page.setItem(lastRowFirstSlot + this@Navigation.margin, prevItem, true) { event -> prevOnClick(event) }
+                } else {
+                    page.setItem(prevSlot + this@Navigation.margin, prevItem, true) { event -> prevOnClick(event) }
+                }
+            }
+
+            if (id != ChestGUI.GLOBAL_PAGE_ID && id != maxPageId) {
+                if (nextSlot == -1) {
+                    page.setItem(lastSlot - this@Navigation.margin, nextItem, true) { event -> nextOnClick(event) }
+                } else {
+                    page.setItem(nextSlot - this@Navigation.margin, nextItem, true) { event -> nextOnClick(event) }
+                }
+            }
+
+        }
+        if (LimeFrameAPI.debugging) println("Finished Building Navigation")
+    }
+
+}

@@ -1,14 +1,15 @@
 package net.justlime.limeframegui.example.commands
 
-import net.justlime.limeframegui.handler.CommandHandler
-import net.justlime.limeframegui.impl.ConfigHandler
+import net.justlime.limeframegui.example.ExampleFrameManager
+import net.justlime.limeframegui.example.pages.pageExample
+import net.justlime.limeframegui.example.pages.simpleGUI
+import net.justlime.limeframegui.manager.GuiManager
+import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiSetting
-import net.justlime.limeframegui.type.ChestGUI
-import net.justlime.limeframegui.utilities.item
-import net.justlime.limeframegui.utilities.toGuiItem
-import net.justlime.limeframegui.utilities.update
-import org.bukkit.Bukkit
+import net.justlime.limeframegui.util.item
+import net.justlime.limeframegui.util.toGuiItem
+import net.justlime.limeframegui.util.update
 import org.bukkit.Material
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
@@ -33,8 +34,12 @@ class SimpleGUICommand() : CommandHandler {
 
 
         when (args[0]) {
+            "example" ->{
+                GuiManager.open(sender, "example")
+                sender.sendMessage("§aOpening the example GUI...")
+            }
 
-            "save" -> savePage(sender)
+//            "save" -> savePage(sender)
             "page" -> {
                 pageExample(sender)
             }
@@ -48,11 +53,11 @@ class SimpleGUICommand() : CommandHandler {
             }
 
             "formatted" -> {
-                formattedPage(Example.setting.copy(), sender)
+                ExampleFrameManager.openFormattedGUI(sender)
             }
 
-            "formatted2" -> {
-                GuiManager.openFormattedGUI(sender)
+            "async" -> {
+                ExampleFrameManager.openAsync(sender)
             }
 
             else -> {}
@@ -64,79 +69,10 @@ class SimpleGUICommand() : CommandHandler {
         sender: CommandSender, command: Command, label: String, args: Array<out String?>
     ): List<String?> {
         val completion = mutableListOf<String>()
-        if (args.isNotEmpty()) completion.addAll(listOf("save", "page", "home", "nested", "formatted", "formatted2"))
+        if (args.isNotEmpty()) completion.addAll(listOf("example", "page", "home", "nested", "formatted", "async"))
         return completion
     }
 
-    fun pageExample(player: Player) {
-
-        val nextItem = ItemStack(Material.ARROW).toGuiItem()
-        nextItem.name = "next"
-        val prevItem = ItemStack(Material.ARROW).toGuiItem()
-        prevItem.name = "prev"
-
-        val item1 = ItemStack(Material.PAPER).toGuiItem()
-        val item2 = ItemStack(Material.DIAMOND).toGuiItem()
-        val item3 = ItemStack(Material.STONE).toGuiItem()
-        val item4 = ItemStack(Material.IRON_SWORD).toGuiItem()
-
-        ChestGUI(6, "Pager GUI") {
-
-            this.nav {
-                this.nextItem = nextItem
-                this.prevItem = prevItem
-                this.margin = 3
-//                this.nextSlot = 48
-//                this.prevSlot = 51
-
-                buffer {}
-            }
-
-            //Global Click handler
-            onClick { it.isCancelled = true }
-
-            //This item added to every page
-            //You can used it as Custom Background Design
-            item4.slot = 5
-            setItem(item4) {
-                it.whoClicked.sendMessage("You click on global item")
-            }
-            addPage(GuiSetting(6, "Regular Page {page}")) {
-                //this item added to specific page only (page 1)
-                for (i in 1..100) {
-                    val newItem = item1.copy(name = "Item $i")
-                    addItem(newItem) {
-                        it.whoClicked.sendMessage("Removed Item at ${it.currentItem?.itemMeta?.displayName}")
-                        remove(it.slot)
-                    }
-                }
-
-                //Runs for only specific Page (1)
-                onOpen {
-                    player.sendMessage("You open a page 1")
-                }
-            }
-
-            setting.title = "Custom Page {page}"
-            setting.rows = 3
-
-        }.open(player)
-    }
-
-    fun simpleGUI(): ChestGUI {
-        return ChestGUI(6, "Simple GUI") {
-            onClick { it.isCancelled = true }
-
-            val item = ItemStack(Material.DIAMOND).toGuiItem().apply {
-                name = "§aClick Me!"
-                lore = mutableListOf("§7This is a simple item.")
-            }
-
-            addItem(item) {
-                it.whoClicked.sendMessage("§aYou clicked the diamond!")
-            }
-        }
-    }
 
     fun homePage(player: Player) {
 
@@ -150,7 +86,8 @@ class SimpleGUICommand() : CommandHandler {
 
             onClick { it.isCancelled = true }
 
-            val simpleItem = ItemStack(Material.GRASS_BLOCK).toGuiItem().apply { name = "Open Simple GUI for %player_name%" }
+            val simpleItem =
+                ItemStack(Material.GRASS_BLOCK).toGuiItem().apply { name = "Open Simple GUI for %player_name%" }
 
             addItem(simpleItem) {
                 simpleGUI().open(it.whoClicked as Player)
@@ -158,8 +95,12 @@ class SimpleGUICommand() : CommandHandler {
 
             val pageItem = ItemStack(Material.BOOK).toGuiItem().apply { name = "Open Pager GUI"; }
 
-            val staticExtraItem = GuiItem(Material.PAPER, name = "Entered $value", lore = listOf("§aPlayTime: %statistic_time_played%"))
-            val dynamicExtraItem = GuiItem(Material.PAPER, nameState = { "Entered $value" }, loreState = { listOf("§aPlayTime: %statistic_time_played%") })
+            val staticExtraItem =
+                GuiItem(Material.PAPER, name = "Entered $value", lore = listOf("§aPlayTime: %statistic_time_played%"))
+            val dynamicExtraItem = GuiItem(
+                Material.PAPER,
+                nameState = { "Entered $value" },
+                loreState = { listOf("§aPlayTime: %statistic_time_played%") })
             addItem(pageItem) {
                 pageExample(player)
             }
@@ -190,26 +131,6 @@ class SimpleGUICommand() : CommandHandler {
             //The only difference in between them that static doesn't point to current variable state where dynamic does!
 
         }.open(player)
-
-    }
-
-    fun savePage(player: Player) {
-
-        val config = ConfigHandler("config.yml")
-        val setting = config.loadInventorySetting("inventory")
-        val inventory = config.loadInventory("inventory") ?: Bukkit.createInventory(null, setting.rows * 9, setting.title)
-
-        ChestGUI(setting.rows, setting.title) {
-
-            onOpen {}
-            loadInventoryContents(inventory)
-
-            onClose {
-                val inventory = pages[0]?.inventory ?: return@onClose //Definitely not happening
-                config.saveInventory("inventory", inventory, setting.title)
-            }
-        }.open(player)
-        ChestGUI(setting.rows, setting.title).open(player)
 
     }
 
@@ -260,110 +181,7 @@ class SimpleGUICommand() : CommandHandler {
 
 }
 
-private object Example {
-    var value = true
-    val setting = GuiSetting(6, "Example %betterteams_name%").apply {
-        this.style.apply {
-            stylishName = true
-            stylishLore = true
-            stylishTitle = true
-        }
-    }
 
-}
 
-private object GuiManager {
-    fun openFormattedGUI(player: Player) {
-        formattedPage(Example.setting, player)
-    }
-}
-
-private fun formattedPage(setting: GuiSetting, player: Player) {
-
-    setting.style.placeholder["{world}"] = player.world.name + " at " + player.location.x.toInt() + player.location.y.toInt() + player.location.z.toInt()
-    ChestGUI(setting) {
-
-        val item3 = GuiItem(
-            material = Material.PLAYER_HEAD, name = "Player: %player_name%", lore = listOf(
-                "<green>Playtime Stats1: %statistic_time_played%", "<green>World: <white>{world}</white>", "<aqua>Click to refresh"
-            ), texture = "%player_name%"
-
-        )
-
-        val item31 = GuiItem(
-            material = Material.PLAYER_HEAD, name = "Player: %player_name%", lore = listOf(
-                "<green>Playtime Stats2: %statistic_time_played%", "<aqua>Click to refresh"
-            ), texture = "%player_name%"
-
-        )
-
-        val finalItem = if (Example.value) item3 else item31
-        Example.value = !Example.value
-
-        val item1 = GuiItem(
-            Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
-                "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
-            )
-        )
-
-        addItem(item1) {
-            it.whoClicked.sendMessage("Clicked formatted item!")
-        }
-
-        setItem(item1, 12) {
-            it.whoClicked.sendMessage("Clicked formatted item on ${it.slot}!")
-        }
-
-        onClick { it.isCancelled = true }
-        addPage {
-
-            val item12 = GuiItem(
-                Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
-                    "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
-                )
-            )
-
-            addItem(item12) {
-                it.whoClicked.sendMessage("Clicked formatted item!")
-            }
-
-            val item2 = GuiItem(
-                material = Material.GOLD_INGOT, name = "Player: %betterteams_name%", lore = listOf(
-                    "<gold>Balance: %vault_eco_balance%", "<white>Location: %player_x%, %player_y%, %player_z%", "<white>PlayTime: <b>%statistic_time_played% </b>",//
-                    "<white> {world}", "custom: {time}"
-                )
-            )
-
-            val item4 = GuiItem(
-                material = Material.TOTEM_OF_UNDYING, name = "<#FF00FF>Custom PlaceHolder</#FF00FF>", lore = listOf(
-                    "<gray>World: {world}</gray>", "<gray>Location: {location}</gray>"
-
-                ), style = setting.style.copy(
-                    placeholder = mutableMapOf(
-                        "{world}" to player.world.name, "{location}" to "${player.location.x.toInt()}, ${player.location.y.toInt()}, ${player.location.z.toInt()}"
-                    )
-                )
-            )
-
-            val item5 = GuiItem(Material.PLAYER_HEAD, texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
-
-            item2.style.placeholder = mutableMapOf("{time}" to player.ticksLived.toString())
-            addItem(item2) { event ->
-                event.item?.style?.placeholder = mutableMapOf("{time}" to player.ticksLived.toString())
-                event.update(session.context)
-            }
-
-            addItem(finalItem) { event ->
-                event.item = if (Example.value) item3 else item31
-                event.item = if (Example.value) item3 else item31
-                event.update()
-            }
-
-            addItem(item4)
-            addItem(item5)
-        }
-    }.open(player, 1)
-
-}
 
 

@@ -1,0 +1,14 @@
+lang:
+  info_name: "<yellow>Information</yellow>"
+  info_lore:
+    - "<gray>This is an example GUI</gray>"
+    - "<gray>created with LimeFrameGUI.</gray>"
+  back_name: "<red>Back</red>"
+  back_lore:
+    - "<gray>Click to return to</gray>"
+    - "<gray>the previous menu.</gray>"
+  next_name: "<green>Next</green>"
+  next_lore:
+    - "<gray>Click to view the</gray>"
+    - "<gray>next page.</gray>"
+

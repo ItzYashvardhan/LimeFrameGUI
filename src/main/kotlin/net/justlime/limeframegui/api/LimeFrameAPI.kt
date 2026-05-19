@@ -1,12 +1,14 @@
 package net.justlime.limeframegui.api
 
 import net.justlime.limeframegui.color.FontStyle
+import net.justlime.limeframegui.config.FrameConfigKeys
+import net.justlime.limeframegui.config.GuiDirectoryHandler
 import net.justlime.limeframegui.enums.ColorType
 import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.integration.SkinRestorerHook
 import net.justlime.limeframegui.listener.InventoryListener
 import net.justlime.limeframegui.listener.PluginListener
-import net.justlime.limeframegui.models.FrameConfigKeys
+import net.justlime.limeframegui.manager.PlayerDataManager
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 
@@ -16,9 +18,9 @@ import org.bukkit.plugin.java.JavaPlugin
 object LimeFrameAPI {
     private lateinit var plugin: JavaPlugin
     var debugging: Boolean = false
-    var keys: FrameConfigKeys = FrameConfigKeys()
+    internal var keys: FrameConfigKeys = FrameConfigKeys()
 
-    fun init(plugin: JavaPlugin, colorType: ColorType = ColorType.LEGACY) {
+    fun init(plugin: JavaPlugin, colorType: ColorType = ColorType.LEGACY): LimeFrameAPI {
         this.plugin = plugin
         Bukkit.getPluginManager().registerEvents(InventoryListener(plugin), plugin)
 
@@ -29,13 +31,28 @@ object LimeFrameAPI {
 
         //run a task on plugin disable
         Bukkit.getPluginManager().registerEvents(PluginListener(), plugin)
+        return this
     }
-    fun enableFoliaLib(){
+
+    fun loadConfig(path: String = "gui"): LimeFrameAPI {
+        GuiDirectoryHandler.loadAll(plugin, path)
+        return this
+    }
+
+    fun initLocale(path: String): LimeFrameAPI{
+        PlayerDataManager.init(plugin,"gui/data")
+        return this
+    }
+
+
+    fun enableFoliaLib(): LimeFrameAPI {
         FoliaLibHook.init(plugin)
+        return this
     }
 
-    fun setKeys(customizer: FrameConfigKeys.() -> Unit) { keys.customizer() }
+    fun setKeys(customizer: FrameConfigKeys.() -> Unit): LimeFrameAPI {
+        keys.customizer(); return this
+    }
 
-    fun getPlugin(): JavaPlugin { return plugin }
-
+    fun getPlugin(): JavaPlugin = plugin
 }

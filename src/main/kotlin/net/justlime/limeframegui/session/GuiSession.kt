@@ -2,20 +2,23 @@ package net.justlime.limeframegui.session
 
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.color.FontStyle
-import net.justlime.limeframegui.handler.GuiEventHandler
-import net.justlime.limeframegui.handler.GuiPage
-import net.justlime.limeframegui.impl.ChestGUIBuilder
+import net.justlime.limeframegui.event.GuiEventHandler
+import net.justlime.limeframegui.menu.GuiPage
+import net.justlime.limeframegui.builder.ChestGUIBuilder
 import net.justlime.limeframegui.models.GuiBuffer
 import net.justlime.limeframegui.models.GuiStyleSheet
-import net.justlime.limeframegui.type.ChestGUI
-import net.justlime.limeframegui.utilities.PerformanceMonitor
+import net.justlime.limeframegui.menu.ChestGUI
+import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.util.PerformanceMonitor
 import org.bukkit.Bukkit
 import org.bukkit.inventory.Inventory
+import org.bukkit.scheduler.BukkitRunnable
 
 class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
 
     private val viewer = context.viewer ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
     private var buffer: GuiBuffer? = null
+    private var activeObserverTask: BukkitRunnable? = null
     lateinit var handler: GuiEventHandler
     lateinit var globalPage: GuiPage
     lateinit var builder: ChestGUIBuilder
@@ -42,6 +45,9 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         }
 
         handler.open(viewer, finalPageId)
+        handler.pageInventories[finalPageId]?.let { activeInv ->
+            startStateObserver(finalPageId, activeInv)
+        }
     }
 
     fun bufferPage(pageId: Int) {
@@ -52,15 +58,12 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
 
         PerformanceMonitor.measure("LAZY PAGE ${handler.getCurrentPage(viewer)}") {
             val allPageIds = builder.pages.keys.filter { it != ChestGUI.GLOBAL_PAGE_ID }.sorted()
-            println(allPageIds)
             val requestedIndex = allPageIds.indexOf(pageId)
             if (requestedIndex == -1) return@measure
 
             val currentMaxIndex = allPageIds.indices.reversed().find { idx ->
                 builder.pages[allPageIds[idx]]?.isRendered == true
             } ?: requestedIndex
-            println("RequestedIndex: $requestedIndex")
-            println("CurrentMaxIndex: $currentMaxIndex")
 
             val shouldLoadMoreForward = (requestedIndex + buffer.margin) >= currentMaxIndex
             if (shouldLoadMoreForward) {
@@ -102,6 +105,9 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
 
         PerformanceMonitor.measure("Open Handler") {
             handler.open(viewer, pageId)
+            handler.pageInventories[pageId]?.let { activeInv ->
+                startStateObserver(pageId, activeInv)
+            }
         }
     }
 
@@ -124,7 +130,6 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         PerformanceMonitor.measure("REFRESH PAGES") {
             val currentPageId = builder.session.handler.getCurrentPage(viewer) ?: 0
             if (LimeFrameAPI.debugging) println("Refresh PageId used $currentPageId")
-            println("vid $currentPageId")
             if (buffer == null) {
                 builder.pages.forEach { (pageId, guiPage) ->
                     renderPage(pageId, guiPage)
@@ -148,6 +153,7 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
     }
 
     private fun renderBufferPages(finalPageId: Int) {
+        val currentBuffer = buffer ?: return
         val pagesToRender = mutableSetOf<Int>()
         pagesToRender.add(ChestGUI.GLOBAL_PAGE_ID)
         pagesToRender.add(finalPageId)
@@ -156,15 +162,14 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         val initialPageIndex = allPageIds.indexOf(finalPageId)
 
         if (initialPageIndex != -1) {
-            val start = (initialPageIndex - buffer!!.renderLimit).coerceAtLeast(0)
-            val end = (initialPageIndex + buffer!!.renderLimit).coerceAtMost(allPageIds.size - 1)
+            val start = (initialPageIndex - currentBuffer.renderLimit).coerceAtLeast(0)
+            val end = (initialPageIndex + currentBuffer.renderLimit).coerceAtMost(allPageIds.size - 1)
 
             for (i in start..end) {
                 pagesToRender.add(allPageIds[i])
             }
         }
 
-        println(pagesToRender)
         pagesToRender.forEach { pageId ->
             builder.pages[pageId]?.let { guiPage ->
                 renderPage(pageId, guiPage)
@@ -202,8 +207,62 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
     }
 
     private fun generateTitle(rawTitle: String, pageId: Int): String {
-        val title = rawTitle.replace("{page}", pageId.toString())
+        val title = if (context.placeholder["{page}"] == null) {
+            rawTitle.replace("{page}", pageId.toString())
+        } else rawTitle
         val useStylishFont = blueprint.setting.style.stylishTitle
         return FontStyle.applyStyle(title, context, useStylishFont)
+    }
+
+    private fun startStateObserver(pageId: Int, inventory: Inventory) {
+        // Cancel any existing observer (e.g., if they just turned the page)
+        activeObserverTask?.cancel()
+
+        val volatileNodes = mutableMapOf<Int, GuiItem>()
+
+        // 1. Scan Global Page for volatile items
+        globalPage.getItems().forEach { (slot, item) ->
+            if (item.updateInterval != null && item.updateInterval!! > 0) {
+                volatileNodes[slot] = item
+            }
+        }
+
+        // 2. Scan Current Page for volatile items (overwrites global if overlapping)
+        builder.pages[pageId]?.getItems()?.forEach { (slot, item) ->
+            if (item.updateInterval != null && item.updateInterval!! > 0) {
+                volatileNodes[slot] = item
+            }
+        }
+
+        // If nothing needs observing, don't start the task!
+        if (volatileNodes.isEmpty()) return
+
+        // 3. Launch the Observer
+        activeObserverTask = object : BukkitRunnable() {
+            var ticksLived = 0
+
+            override fun run() {
+                // Self-Destruct if player went offline or closed the GUI
+                if (!viewer.isOnline || viewer.openInventory.topInventory != inventory) {
+                    cancel()
+                    return
+                }
+
+                ticksLived++
+
+                // Recompose items when their specific interval hits
+                for ((slot, blueprintItem) in volatileNodes) {
+                    val interval = blueprintItem.updateInterval ?: continue
+                    if (ticksLived % interval == 0) {
+                        // Use your existing ItemRenderer to process PAPI and Context safely!
+                        val updatedStack = ItemRenderer.render(blueprintItem, context)
+                        inventory.setItem(slot, updatedStack)
+                    }
+                }
+            }
+        }
+
+        // Start running every 1 tick
+        activeObserverTask?.runTaskTimer(LimeFrameAPI.getPlugin(), 1L, 1L)
     }
 }

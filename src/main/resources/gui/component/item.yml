@@ -1,0 +1,25 @@
+global_background_blue:
+  name: " "
+  char: "B"
+  item: LIGHT_BLUE_STAINED_GLASS_PANE
+  flags: [ HIDE_ATTRIBUTES, HIDE_ADDITIONAL_TOOLTIP ]
+
+global_background_purple:
+  name: " "
+  char: "P"
+  item: PURPLE_STAINED_GLASS_PANE
+  flags: [ HIDE_ATTRIBUTES, HIDE_ADDITIONAL_TOOLTIP ]
+
+global_back_button:
+  name: "lang.core_back_name"
+  char: "R"
+  item: PLAYER_HEAD
+  texture: "texture:core.back"
+  action: "[menu] previous_menu"
+
+global_home_button:
+  name: "lang.core_home_name"
+  char: "H"
+  item: PLAYER_HEAD
+  texture: "texture:core.home"
+  action: "[menu] dashboard"

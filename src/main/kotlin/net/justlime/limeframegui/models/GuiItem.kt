@@ -2,10 +2,11 @@ package net.justlime.limeframegui.models
 
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.integration.SkinRestorerHook
-import net.justlime.limeframegui.utilities.MojangTextureFetcher
-import net.justlime.limeframegui.utilities.SkullProfileCache
-import net.justlime.limeframegui.utilities.SkullUtils
-import net.justlime.limeframegui.utilities.TextureCache
+import net.justlime.limeframegui.registry.component.LangRegistry
+import net.justlime.limeframegui.registry.component.TextureRegistry
+import net.justlime.limeframegui.util.SkullProfileCache
+import net.justlime.limeframegui.util.SkullUtils
+import net.justlime.limeframegui.util.TextureCache
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.enchantments.Enchantment
@@ -60,6 +61,7 @@ data class GuiItem(
     val nameState: (() -> String)? = null,
     val loreState: (() -> List<String>)? = null,
     var style: GuiStyleSheet = GuiStyleSheet(),
+    var updateInterval: Int? = null,
 
     private var baseItemStack: ItemStack? = null,
 
@@ -69,7 +71,6 @@ data class GuiItem(
 
     // Helper properties to resolve dynamic state vs static state
     val currentName: String get() = nameState?.invoke() ?: name
-
     val currentLore: List<String> get() = loreState?.invoke() ?: lore
 
     /**
@@ -102,15 +103,71 @@ data class GuiItem(
             applySkullTexture(meta)
         }
 
-        // 4. Apply Display Name & Lore (with placeholders and colors)
-        style.let {
-            val finalName = FontStyle.applyStyle(currentName, it, it.stylishName)
-            meta.setDisplayName(finalName)
+//        / --- 1. Resolve Language Aliases (At Runtime) ---
+        val langRegex = Regex("\\{lang\\.([a-zA-Z0-9_.-]+)\\}")
+
+        // Helper function for inline string replacement
+        fun resolveLangString(text: String): String {
+            // Support old syntax without brackets (e.g., "lang.back_name")
+            if (text.startsWith("lang.")) {
+                return LangRegistry.getString(text.substringAfter("lang.")) ?: text
+            }
+
+            // Support new inline syntax (e.g., "1. {lang.first_prize}")
+            var resolvedText = text
+            langRegex.findAll(text).forEach { match ->
+                val fullMatch = match.value
+                val key = match.groupValues[1]
+                val replacement = LangRegistry.getString(key) ?: fullMatch // Fallback to raw text if missing
+                resolvedText = resolvedText.replace(fullMatch, replacement)
+            }
+            return resolvedText
         }
+
+        // Apply to Name
+        val localizedName = resolveLangString(currentName)
+
+        // Apply to Lore
+        val rawLore = currentLore
+        val localizedLore = mutableListOf<String>()
+
+        for (line in rawLore) {
+            val trimmedLine = line.trim()
+
+            // Check A: Is it the old exact syntax? (e.g., "lang.info_lore")
+            if (trimmedLine.startsWith("lang.")) {
+                val key = trimmedLine.substringAfter("lang.")
+                val listResult = LangRegistry.getList(key)
+                if (listResult.isNotEmpty()) {
+                    localizedLore.addAll(listResult)
+                    continue
+                }
+            }
+
+            // Check B: Is the line EXACTLY a bracketed placeholder? (e.g., "{lang.info_lore}")
+            val exactMatch = langRegex.matchEntire(trimmedLine)
+            if (exactMatch != null) {
+                val key = exactMatch.groupValues[1]
+                val listResult = LangRegistry.getList(key)
+
+                // If it resolves to a list, expand the list right here
+                if (listResult.isNotEmpty()) {
+                    localizedLore.addAll(listResult)
+                    continue
+                }
+            }
+
+            // Check C: If it's not a full list expansion, just resolve any inline string placeholders
+            localizedLore.add(resolveLangString(line))
+        }
+
+        // --- 2. Apply Placeholders & Font Styling ---
         style.let {
-            val rawLore = currentLore
-            if (rawLore.isNotEmpty()) {
-                meta.lore = FontStyle.applyStyle(rawLore, it, it.stylishLore)
+            val finalName = FontStyle.applyStyle(localizedName, it, it.stylishName)
+            meta.setDisplayName(finalName)
+
+            if (localizedLore.isNotEmpty()) {
+                meta.lore = FontStyle.applyStyle(localizedLore, it, it.stylishLore)
             }
         }
 
@@ -170,7 +227,12 @@ data class GuiItem(
      */
     fun clone(): GuiItem {
         return this.copy(
-            lore = ArrayList(this.lore), flags = ArrayList(this.flags), slotList = ArrayList(this.slotList), enchantments = HashMap(this.enchantments), style = this.style.copy(), baseItemStack = this.baseItemStack?.clone()
+            lore = ArrayList(this.lore),
+            flags = ArrayList(this.flags),
+            slotList = ArrayList(this.slotList),
+            enchantments = HashMap(this.enchantments),
+            style = this.style.copy(),
+            baseItemStack = this.baseItemStack?.clone()
         )
     }
 
@@ -180,9 +242,14 @@ data class GuiItem(
             it.viewer = style.viewer
             it.offlinePlayer = style.offlinePlayer
             it.placeholder = style.placeholder
-            it.openSound = style.openSound
-            it.closeSound = style.closeSound
-            it.clickSound = style.clickSound
+            it.openSounds = style.openSounds
+            it.closeSounds = style.closeSounds
+            it.clickSounds = style.clickSounds
+
+            it.action = style.action
+            it.clickSoundAlias = style.clickSoundAlias
+            it.openSoundAlias = style.openSoundAlias
+            it.closeSoundAlias = style.closeSoundAlias
         }
     }
 
@@ -191,8 +258,9 @@ data class GuiItem(
      * Applies texture logic specifically for SkullMeta.
      */
     private fun applySkullTexture(meta: SkullMeta) {
-        val tex = texture ?: return
+        val rawTex = texture ?: return
 
+        val tex = TextureRegistry.get(rawTex.removePrefix("texture.")) ?: rawTex
         when {
             // Case A: {player} placeholder
             tex.equals("{player}", ignoreCase = true) -> {
@@ -244,7 +312,8 @@ data class GuiItem(
                     if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = owner.playerProfile
                     else meta.owningPlayer = owner
 
-                } catch (_: Exception) { /* Ignore malformed UUID */ }
+                } catch (_: Exception) { /* Ignore malformed UUID */
+                }
             }
 
             // Case C: Base64 Texture
@@ -255,12 +324,14 @@ data class GuiItem(
     }
 
 
-
     private fun isEmpty(): Boolean {
         return name.isEmpty() && currentName.isEmpty() && lore.isEmpty() && currentLore.isEmpty()
     }
 
     private fun isPlayerHead(): Boolean {
-        return material.name.contains("PLAYER_HEAD", ignoreCase = true) || material.name.contains("SKULL_ITEM", ignoreCase = true)
+        return material.name.contains("PLAYER_HEAD", ignoreCase = true) || material.name.contains(
+            "SKULL_ITEM",
+            ignoreCase = true
+        )
     }
 }

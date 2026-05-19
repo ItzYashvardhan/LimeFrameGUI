@@ -1,0 +1,48 @@
+package net.justlime.limeframegui.menu
+
+import net.justlime.limeframegui.event.AnvilGuiEventImpl
+import net.justlime.limeframegui.builder.AnvilGuiBuilder
+import net.justlime.limeframegui.models.AnvilGuiSetting
+import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiStyleSheet
+import org.bukkit.Material
+import org.bukkit.entity.Player
+
+class AnvilGui(private val setting: AnvilGuiSetting, private val block: AnvilGuiBuilder.() -> Unit = {}) {
+
+    /**
+     * Convenience Constructor for creating simple Anvils without a config object.
+     */
+    constructor(title: String, label: String = "", block: AnvilGuiBuilder.() -> Unit = {}) : this(
+        AnvilGuiSetting(
+            title = title,
+            label = label,
+            leftItem = GuiItem(Material.PAPER, "Input"),
+            rightItem = GuiItem(Material.AIR, " "),
+            outPutItem = GuiItem(Material.BARRIER, "Submit"),
+            style = GuiStyleSheet()
+        ),
+        block
+    )
+
+    fun open(player: Player) {
+        val builder = AnvilGuiBuilder()
+        builder.title = setting.title
+        builder.label = setting.label
+        builder.style = setting.style.copy()
+
+        builder.leftItem = setting.leftItem.clone()
+        builder.rightItem = setting.rightItem.clone()
+        builder.outputItem = setting.outPutItem.clone()
+
+        builder.openSoundAlias = setting.openSoundAlias
+        builder.cancelSoundAlias = setting.cancelSoundAlias
+        builder.submitSoundAlias = setting.submitSoundAlias
+        builder.preventClose = setting.preventClose
+
+
+        builder.apply(block)
+        val runtimeSetting = builder.buildSetting()
+        AnvilGuiEventImpl(player, runtimeSetting, builder).open()
+    }
+}

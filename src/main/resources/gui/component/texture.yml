@@ -1,0 +1,34 @@
+# ==========================================================
+# LimeFrameGUI - Texture Configuration
+# ==========================================================
+# Define Base64 textures here to use them as aliases in your GUIs.
+# Usage in gui config:
+#   material: PLAYER_HEAD
+#   texture: "gui.buttons.next"
+# ==========================================================
+
+# Global / Common Textures
+currency:
+  coins: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMWEzZWVhNjRjMmE4OGE0NjgxMzZhNGE1ZTgyMzJjNjFmNWM1NzYxMGFmMGRhNDdkNzUxN2RhMGFmYmZiNjYifX19"
+  gems: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNjk5NzU3Y2EzY2FkMzZlZTY2NmZmMDkyYzRkMjA1ZTEzY2E2NzJjYWFjZGY1MDVkNzk5MjhhNjRjYTY4NjZiOSJ9fX0="
+
+stats: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjYyYmY5YmY4YmU4YzU1YmY2ZGU0Y2Y0YjE5YmY0YmY0YmY0YmY0YmY0YmY0YmY0YmY0YmY0YmY0In19fQ=="
+leave: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmQ2OWUwNmU1ZGFkZmQ4NGU1ZjNkMWMyMTA2M2YyNTUxOTU5YjhlMTNmNzU3NTY1NzQwNmY5YmI3MGExNmZkIn19fQ=="
+
+  # Specific GUI Categories
+
+# Navigation Buttons
+buttons:
+  home: eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTJkN2E3NTFlYjA3MWUwOGRiYmM5NWJjNWQ5ZDY2ZTVmNTFkYzY3MTI2NDBhZDJkZmEwM2RlZmJiNjhhN2YzYSJ9fX0
+  back: eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjIzZmI2NzQyOTcxNmIyMWJjNmU4ZTdkNjY5Y2VkZGY2NWIxM2UwNzkwYTVjZTU1YjJlMDc3YjgyZDE5ZTEyNCJ9fX0=
+  next: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmE4N2UzZDk2ZTFjZmViOWNjZmIzYmE1M2EyMTdmYWY1MjQ5ZTI4NTUzM2IyNzFhMmZiMjg0YzMwZGJkOTgyOSJ9fX0"
+  prev: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGExZDU1YjNmOTg5NDEwYTM0NzUyNjUwZTI0OGM5YjZjMTc4M2E3ZWMyYWEzZmQ3Nzg3YmRjNGQwZTYzN2QzOSJ9fX0"
+
+  # Decorative Elements
+  decorations:
+    question_mark: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNTEyNjlhMDY3ZWUzN2U2MzYzNWNhMWU3MjNiNjc2ZjEzOWZhMmI0ZmU2Y2M2YzZmODdhM2FkZWNiMmFjNTE5In19fQ=="
+    exclamation: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTAwNjhlODVhMzExYmVlY2IyOTc3ZjNhNzllMWUxODlhMGFkOTU4MzRlYWFlODZmMjQzOTkyMTMyOWVlNyJ9fX0="
+
+social:
+  discord: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNGQ0MjMzN2JlMGJkY2EyMTI2YmE1Zjg1NjA3Mjk2ZDAwNGNlZjc5OWEyMjIyMzdkMDkxNGFjY2RlODJiNjhlMCJ9fX0="
+  youtube: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2I3ZDM4Y2ZiNDRiMzNlNDlmZmI5YzMzNzI1YTA5ZGFhOGY5NGExNDBhZmUxMDlhNDIxZmVmMzViYjYwZWIwZSJ9fX0="
