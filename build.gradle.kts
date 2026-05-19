@@ -29,7 +29,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.spigot.api)
+    compileOnly(libs.spigot.api)
     compileOnly(libs.authlib)
     compileOnly(libs.kotlin.stdlib)
     compileOnly(libs.kotlin.reflect)

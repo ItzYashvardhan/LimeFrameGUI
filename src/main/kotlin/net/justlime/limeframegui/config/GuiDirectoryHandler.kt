@@ -176,7 +176,8 @@ object GuiDirectoryHandler {
     fun reload(plugin: JavaPlugin, reset: Boolean = false, baseDir: String = "gui") {
         plugin.logger.info("[LimeFrameGUI] Initiating reload sequence...")
 
-        // Flush all memory registries
+        // Flush all memory registries\
+        PlaceholderRegistry.clear()
         PageRegistry.clear()
         TemplateRegistry.clear()
         ItemRegistry.clear()
@@ -195,6 +196,7 @@ object GuiDirectoryHandler {
         extractDefaultsFromJar(plugin, baseDir, replace = reset)
 
         // Re-compile everything
+        loadPlaceholders(File(guiFolder, "component"))
         loadLocale(guiFolder)
         loadComponents(File(guiFolder, "component"))
         loadPages(plugin, File(guiFolder, "pages"))

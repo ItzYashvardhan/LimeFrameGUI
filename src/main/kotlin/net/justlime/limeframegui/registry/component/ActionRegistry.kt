@@ -27,13 +27,14 @@ object ActionRegistry : IRegistry {
         for (key in section.getKeys(false)) {
             val currentPath = if (pathPrefix.isEmpty()) key else "$pathPrefix.$key"
 
-            if (section.isList(key)) {
-                val directList = section.getStringList(key)
-                val resolvedList = PlaceholderRegistry.resolve(section.getStringList(key))
+            // Support single strings alongside lists!
+            if (section.isList(key) || section.isString(key)) {
+                val rawList = if (section.isList(key)) section.getStringList(key) else listOf(section.getString(key)!!)
+                val resolvedList = PlaceholderRegistry.resolve(rawList)
+
                 actionPacks[currentPath] = GuiActionPack.Standard(
                     requirements = emptyList(),
                     denyBehavior = ActionBehavior.Simple(emptyList()),
-                    // Assign direct lists to a generic 'click'
                     clickActions = mutableMapOf("click" to ActionBehavior.Simple(resolvedList))
                 )
                 continue
@@ -61,7 +62,7 @@ object ActionRegistry : IRegistry {
                 }
                 actionPacks[currentPath] = GuiActionPack.Sequence(nodes, fallback)
             }
-            // 2. Is it a Standard Pack? (Now safely checks for 'click' objects)
+            // 2. Is it a Standard Pack?
             else if (isActionPack(subSection)) {
                 actionPacks[currentPath] = parseStandardNode(subSection)
             }
@@ -73,7 +74,10 @@ object ActionRegistry : IRegistry {
     }
 
     private fun parseStandardNode(section: ConfigurationSection): GuiActionPack.Standard {
-        val requirements = section.getStringList("requirements")
+        // Resolve placeholders inside requirements!
+        val rawRequirements = section.getStringList("requirements")
+        val requirements = PlaceholderRegistry.resolve(rawRequirements)
+
         val denyBehavior = parseBehavior(section, "deny")
         val clickActions = mutableMapOf<String, ActionBehavior>()
 
@@ -94,11 +98,21 @@ object ActionRegistry : IRegistry {
             return ActionBehavior.Simple(PlaceholderRegistry.resolve(section.getStringList(key)))
         }
 
+        // 🌟 FIX 3: Catch single-string actions so they don't get ignored!
+        if (section.isString(key)) {
+            val singleString = section.getString(key)!!
+            return ActionBehavior.Simple(listOf(PlaceholderRegistry.resolve(singleString)))
+        }
+
         if (section.isConfigurationSection(key)) {
             val sub = section.getConfigurationSection(key)!!
             if (sub.contains("when")) {
                 val whenSec = sub.getConfigurationSection("when")!!
-                val valueStr = whenSec.getString("value") ?: ""
+
+                // 🌟 FIX 4: Resolve placeholders inside the "when" value!
+                val rawValue = whenSec.getString("value") ?: ""
+                val valueStr = PlaceholderRegistry.resolve(rawValue)
+
                 val resultSec = whenSec.getConfigurationSection("result")
                 val resultMap = mutableMapOf<String, ActionBehavior>()
 

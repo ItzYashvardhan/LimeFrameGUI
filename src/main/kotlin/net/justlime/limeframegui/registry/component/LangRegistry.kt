@@ -93,11 +93,15 @@ object LangRegistry : IRegistry {
         val currentRawLists = rawLists[safeLocale]!!
 
         for (key in currentRawMessages.keys) {
-            compiledMessages[safeLocale]!![key] = resolveString(currentRawMessages[key]!!, safeLocale, mutableSetOf(key))
+            // 🌟 FIX 1: Apply global placeholders to compiled lang strings at load-time!
+            val internallyResolved = resolveString(currentRawMessages[key]!!, safeLocale, mutableSetOf(key))
+            compiledMessages[safeLocale]!![key] = PlaceholderRegistry.resolve(internallyResolved)
         }
 
         for (key in currentRawLists.keys) {
-            compiledLists[safeLocale]!![key] = resolveList(currentRawLists[key]!!, safeLocale, mutableSetOf(key))
+            // 🌟 FIX 2: Apply global placeholders to compiled lang lists at load-time!
+            val internallyResolved = resolveList(currentRawLists[key]!!, safeLocale, mutableSetOf(key))
+            compiledLists[safeLocale]!![key] = PlaceholderRegistry.resolve(internallyResolved)
         }
     }
 
@@ -123,15 +127,18 @@ object LangRegistry : IRegistry {
      * into compiled localized text at runtime.
      */
     fun resolveLangString(text: String, locale: String): String {
+        // Direct Lang Mapping (e.g. `name: "lang.dialog_title"`)
         if (text.startsWith("lang.") || text.startsWith("lang:")) {
             val stripped = text.substring(5)
             val parts = stripped.split("|")
             val key = parts[0]
             val args = parseArgs(parts.drop(1))
 
-            return getString(key, locale, args) ?: text
+            val result = getString(key, locale, args) ?: text
+            return PlaceholderRegistry.resolve(result) // 🌟 FIX 3: Catch direct lang mapping
         }
 
+        // Inline Lang Mapping (e.g. `name: "Welcome to {lang:title} GUI!"`)
         var resolvedText = text
         langRegex.findAll(text).forEach { match ->
             val fullMatch = match.value
@@ -144,7 +151,8 @@ object LangRegistry : IRegistry {
             resolvedText = resolvedText.replace(fullMatch, replacement)
         }
 
-        return resolvedText
+        // This ensures `name: "{cmd.team} GUI"` gets resolved perfectly.
+        return PlaceholderRegistry.resolve(resolvedText)
     }
 
     /**
