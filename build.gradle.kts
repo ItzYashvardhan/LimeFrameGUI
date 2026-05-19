@@ -107,8 +107,3 @@ tasks.register<Exec>("runServer") {
     commandLine("java", "-Xmx2G", "-Xms2G", "-jar", "paper-26.1.2-60.jar", "nogui")
     standardInput = System.`in`
 }
-
-
-
-
-
