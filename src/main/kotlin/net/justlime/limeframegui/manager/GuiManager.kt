@@ -1,8 +1,11 @@
 package net.justlime.limeframegui.manager
 
+import net.justlime.limeframegui.engine.ActionEngine
+import net.justlime.limeframegui.engine.ConditionEngine
 import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.models.GuiPageTemplate
 import net.justlime.limeframegui.registry.component.LangRegistry
+import net.justlime.limeframegui.registry.component.PlaceholderRegistry
 import net.justlime.limeframegui.registry.gui.ListPopulatorRegistry
 import net.justlime.limeframegui.registry.gui.PageRegistry
 import org.bukkit.Material
@@ -28,14 +31,21 @@ object GuiManager {
             println("[LimeFrameGUI] Error: Attempted to open unknown page '$guiId'")
             return false
         }
+
+        // Check requirements
+        val requirements = PlaceholderRegistry.resolve(template.setting.openRequirements)
+        if (!ConditionEngine.checkRequirements(player, requirements)) {
+            ActionEngine.executeBehavior(player, template.setting.denyBehavior, null)
+            return false
+        }
+
         val locale = player.locale
         val resolvedTitle = LangRegistry.resolveLangString(template.setting.title, locale)
         val localizedSetting = template.setting.copy(title = resolvedTitle)
         ChestGUI(localizedSetting) {
             onClick { it.isCancelled = true }
 
-            // 1. Resolve Permission-Based Layout
-            // We find the first permission the player has, or fallback to "default"
+            // Resolve Permission-Based Layout
             val activeItems = template.permissionItems.entries
                 .firstOrNull { (perm, _) -> perm == "default" || player.hasPermission(perm) }
                 ?.value ?: template.permissionItems["default"] ?: emptyList()
@@ -43,7 +53,7 @@ object GuiManager {
             val nextBtn = activeItems.find { it.style.action == "core_next_page" }
             val prevBtn = activeItems.find { it.style.action == "core_prev_page" }
 
-            // 2. Configure Dynamic List Navigation
+            // Configure Dynamic List Navigation
             template.dynamicMask?.let { mask ->
                 nav {
                     nextBtn?.let {
@@ -63,7 +73,7 @@ object GuiManager {
                 }
             }
 
-            // 3. Render Static Layout & Semantic Items
+            // Render Static Layout & Semantic Items
             activeItems.forEach { templateItem ->
                 val action = templateItem.style.action
                 if (action == "core_next_page" || action == "core_prev_page") return@forEach
@@ -80,10 +90,10 @@ object GuiManager {
                 }
             }
 
-            // 4. Populate and Render Dynamic Elements
+            // Populate and Render Dynamic Elements
             template.dynamicMask?.let { mask ->
                 // Fetch context-aware items (e.g., list of online players, allies, etc.)
-                val populatedItems = ListPopulatorRegistry.getItems(mask.populatorId, player, mask.templateItem)
+                val populatedItems = ListPopulatorRegistry.getItems(mask.populatorId, player, mask)
 
                 // Hand over to ChestGUI's pagination engine
                 addPage {

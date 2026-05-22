@@ -48,6 +48,10 @@ data class GuiItem(
     var customModelData: Int? = null,
     var texture: String? = null,
 
+    // Conditional View Logic
+    var viewRequirements: List<String> = emptyList(),
+    var priority: Int = 0,
+
     // Functional Meta
     var enchantments: Map<Enchantment, Int> = emptyMap(),
     var unbreakable: Boolean = false,
@@ -163,11 +167,10 @@ data class GuiItem(
 
         // --- 2. Apply Placeholders & Font Styling ---
         style.let {
-            val finalName = FontStyle.applyStyle(localizedName, it, it.stylishName)
+            val finalName = FontStyle.applyStyle(localizedName, it, it.textSettings.name)
             meta.setDisplayName(finalName)
-
             if (localizedLore.isNotEmpty()) {
-                meta.lore = FontStyle.applyStyle(localizedLore, it, it.stylishLore)
+                meta.lore = FontStyle.applyStyle(localizedLore, it, it.textSettings.lore)
             }
         }
 
@@ -231,7 +234,10 @@ data class GuiItem(
             flags = ArrayList(this.flags),
             slotList = ArrayList(this.slotList),
             enchantments = HashMap(this.enchantments),
-            style = this.style.copy(),
+            style = this.style.copy(
+                placeholder = HashMap(this.style.placeholder),
+                textSettings = this.style.textSettings.clone()
+            ),
             baseItemStack = this.baseItemStack?.clone()
         )
     }

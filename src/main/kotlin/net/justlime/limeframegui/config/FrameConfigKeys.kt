@@ -5,7 +5,8 @@ import net.justlime.limeframegui.models.registry.GuiSound
 data class FrameConfigKeys(
     var main: String = "main",
     var pattern: String = "main.pattern",
-    var background: String = "background",
+    var openRequirements: String = "requirement.condition",
+    var denyActions: String = "requirement.on-deny",
     var inventoryTitle: String = "title",
     var inventoryRows: String = "rows",
     var inventoryItemSection: String = "items",
@@ -25,13 +26,21 @@ data class FrameConfigKeys(
     var slot: String = "slot",
     var slotList: String = "slots",
     var base64Data: String = "data",
-    var stylishFontTitle: String = "font-title",
-    var stylishFontName: String = "font-name",
-    var stylishFontLore: String = "font-lore",
-    var stylishTitle: Boolean = false,//Set to try to use small caps font.
+
+    // Advanced Text Engine Keys
+    var textSection: String = "text",
+    var textFont: String = "font",
+    var textWeight: String = "weight",
+    var textPrefix: String = "prefix",
+    var textSuffix: String = "suffix",
+    var textCase: String = "case",
+    var textWrapLength: String = "wrap-length",
+
+    var stylishTitle: Boolean = false,
     var stylishName: Boolean = false,
     var stylishLore: Boolean = false,
     var action: String = "action",
+
     /**Play Sound on ItemClick
      * - Syntax: name, pitch, volume
      * - Default Value: null,1.0,1.0**/
@@ -42,6 +51,7 @@ data class FrameConfigKeys(
      * - Default Value: null,1.0,1.0
      **/
     var stylishOpenSound: String = "open-sound",
+
     /** Play Sound on GUI Close
      * - Syntax: name, pitch, volume
      * - Default Value: null,1.0,1.0
@@ -59,9 +69,7 @@ data class FrameConfigKeys(
     var defaultAnvilTitle: String = "Anvil Gui",
     var defaultAnvilLabel: String = "Type here",
 
-
     var clickSound: GuiSound = GuiSound(),
     var openSound: GuiSound = GuiSound(),
     var closeSound: GuiSound = GuiSound()
-
 )

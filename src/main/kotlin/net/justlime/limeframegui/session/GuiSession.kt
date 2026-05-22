@@ -5,6 +5,7 @@ import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.menu.GuiPage
 import net.justlime.limeframegui.builder.ChestGUIBuilder
+import net.justlime.limeframegui.engine.ConditionEngine
 import net.justlime.limeframegui.models.GuiBuffer
 import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.menu.ChestGUI
@@ -16,7 +17,8 @@ import org.bukkit.scheduler.BukkitRunnable
 
 class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
 
-    private val viewer = context.viewer ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
+    private val viewer = context.viewer
+        ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
     private var buffer: GuiBuffer? = null
     private var activeObserverTask: BukkitRunnable? = null
     lateinit var handler: GuiEventHandler
@@ -29,7 +31,8 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         buffer = builder.buffer
         handler = builder.build()
 
-        if (builder.pages[0] != null) globalPage = builder.pages[0] ?: throw IllegalStateException("Cannot start a GUI Session without a global page in the builder")
+        if (builder.pages[0] != null) globalPage = builder.pages[0]
+            ?: throw IllegalStateException("Cannot start a GUI Session without a global page in the builder")
 
         val minPageId = if (builder.pages.size == 1) 0 else builder.pages.keys.filter { it != 0 }.minOrNull() ?: 1
         val finalPageId = initialPage ?: minPageId
@@ -180,19 +183,38 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
     private fun renderPage(pageId: Int, guiPage: GuiPage) {
         val styledInventory = createStylishInventory(pageId)
 
+        // 1. Process Global Page
         if (pageId != 0) {
-            globalPage.getItems().forEach { (slot, guiItem) ->
+            // Group the flat list by slot
+            val globalItemsBySlot = globalPage.getItems().filter { it.slot != null }.groupBy { it.slot!! }
+
+            for ((slot, items) in globalItemsBySlot) {
                 val isDynamic = globalPage.trackAddItemSlot.containsKey(slot)
-                if (!isDynamic) {
-                    val globalStack = ItemRenderer.render(guiItem, context)
+                if (isDynamic) continue
+
+                // 🌟 Filter: Highest Priority -> Lowest Priority -> Check Requirement
+                val validItem = items.sortedByDescending { it.priority }
+                    .firstOrNull { ConditionEngine.checkRequirements(viewer, it.viewRequirements) }
+
+                if (validItem != null) {
+                    val globalStack = ItemRenderer.render(validItem, context)
                     styledInventory.setItem(slot, globalStack)
                 }
             }
         }
 
-        guiPage.getItems().forEach { (slot, guiItem) ->
-            val finalItemStack = ItemRenderer.render(guiItem, context)
-            styledInventory.setItem(slot, finalItemStack)
+        // 2. Process Current Page
+        val localItemsBySlot = guiPage.getItems().filter { it.slot != null }.groupBy { it.slot!! }
+
+        for ((slot, items) in localItemsBySlot) {
+            // 🌟 Filter: Highest Priority -> Lowest Priority -> Check Requirement
+            val validItem = items.sortedByDescending { it.priority }
+                .firstOrNull { ConditionEngine.checkRequirements(viewer, it.viewRequirements) }
+
+            if (validItem != null) {
+                val finalItemStack = ItemRenderer.render(validItem, context)
+                styledInventory.setItem(slot, finalItemStack)
+            }
         }
 
         handler.pageInventories[pageId] = styledInventory
@@ -210,31 +232,41 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         val title = if (context.placeholder["{page}"] == null) {
             rawTitle.replace("{page}", pageId.toString())
         } else rawTitle
-        val useStylishFont = blueprint.setting.style.stylishTitle
-        return FontStyle.applyStyle(title, context, useStylishFont)
+        val titleRule = blueprint.setting.style.textSettings.title
+        return FontStyle.applyStyle(title, context, titleRule)
     }
 
     private fun startStateObserver(pageId: Int, inventory: Inventory) {
-        // Cancel any existing observer (e.g., if they just turned the page)
         activeObserverTask?.cancel()
 
         val volatileNodes = mutableMapOf<Int, GuiItem>()
 
+        // Helper to find the "Winning" item for a slot
+        fun getActiveItem(items: List<GuiItem>): GuiItem? {
+            return items.sortedByDescending { it.priority }
+                .firstOrNull { ConditionEngine.checkRequirements(viewer, it.viewRequirements) }
+        }
+
         // 1. Scan Global Page for volatile items
-        globalPage.getItems().forEach { (slot, item) ->
-            if (item.updateInterval != null && item.updateInterval!! > 0) {
-                volatileNodes[slot] = item
+        val globalItemsBySlot = globalPage.getItems().filter { it.slot != null }.groupBy { it.slot!! }
+        for ((slot, items) in globalItemsBySlot) {
+            if (globalPage.trackAddItemSlot.containsKey(slot)) continue
+
+            val winner = getActiveItem(items)
+            if (winner != null && winner.updateInterval != null && winner.updateInterval!! > 0) {
+                volatileNodes[slot] = winner
             }
         }
 
         // 2. Scan Current Page for volatile items (overwrites global if overlapping)
-        builder.pages[pageId]?.getItems()?.forEach { (slot, item) ->
-            if (item.updateInterval != null && item.updateInterval!! > 0) {
-                volatileNodes[slot] = item
+        val localItemsBySlot = builder.pages[pageId]?.getItems()?.filter { it.slot != null }?.groupBy { it.slot!! } ?: emptyMap()
+        for ((slot, items) in localItemsBySlot) {
+            val winner = getActiveItem(items)
+            if (winner != null && winner.updateInterval != null && winner.updateInterval!! > 0) {
+                volatileNodes[slot] = winner
             }
         }
 
-        // If nothing needs observing, don't start the task!
         if (volatileNodes.isEmpty()) return
 
         // 3. Launch the Observer
@@ -242,7 +274,6 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
             var ticksLived = 0
 
             override fun run() {
-                // Self-Destruct if player went offline or closed the GUI
                 if (!viewer.isOnline || viewer.openInventory.topInventory != inventory) {
                     cancel()
                     return
@@ -250,11 +281,11 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
 
                 ticksLived++
 
-                // Recompose items when their specific interval hits
                 for ((slot, blueprintItem) in volatileNodes) {
                     val interval = blueprintItem.updateInterval ?: continue
                     if (ticksLived % interval == 0) {
-                        // Use your existing ItemRenderer to process PAPI and Context safely!
+                        // NOTE: If an item requirement dynamically changes while they have the GUI open
+                        // (e.g. they suddenly lose VIP), a softRefresh() handles the complete redraw!
                         val updatedStack = ItemRenderer.render(blueprintItem, context)
                         inventory.setItem(slot, updatedStack)
                     }
@@ -262,7 +293,6 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
             }
         }
 
-        // Start running every 1 tick
         activeObserverTask?.runTaskTimer(LimeFrameAPI.getPlugin(), 1L, 1L)
     }
 }

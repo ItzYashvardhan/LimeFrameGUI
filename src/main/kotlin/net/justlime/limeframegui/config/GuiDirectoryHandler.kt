@@ -8,8 +8,8 @@ import net.justlime.limeframegui.registry.component.LangRegistry
 import net.justlime.limeframegui.registry.component.PlaceholderRegistry
 import net.justlime.limeframegui.registry.component.SoundRegistry
 import net.justlime.limeframegui.registry.component.TextureRegistry
-import net.justlime.limeframegui.registry.gui.PageLoader
 import net.justlime.limeframegui.registry.gui.PageRegistry
+import net.justlime.limeframegui.registry.gui.TemplateCompiler
 import net.justlime.limeframegui.registry.gui.TemplateRegistry
 import net.justlime.limeframegui.util.extractDefaultsFromJar
 import org.bukkit.configuration.ConfigurationSection
@@ -139,7 +139,7 @@ object GuiDirectoryHandler {
                 if (type == "interface" || type == "template") {
                     val relativePath = file.relativeTo(pagesFolder).path
                     val pageId = relativePath.removeSuffix(".yml").replace("\\", "/")
-                    PageLoader.parseTemplate(pageId, fileHandler.config)
+                    TemplateCompiler.compile(pageId, fileHandler.config)
                 } else {
                     standardPages.add(file)
                 }
@@ -155,7 +155,7 @@ object GuiDirectoryHandler {
                 val relativePath = file.relativeTo(pagesFolder).path
                 val pageId = relativePath.removeSuffix(".yml").replace("\\", "/")
 
-                val template = PageLoader.parseTemplate(pageId, fileHandler.config)
+                val template = TemplateCompiler.compile(pageId, fileHandler.config)
                 if (template != null) {
                     PageRegistry.register(template)
                 }

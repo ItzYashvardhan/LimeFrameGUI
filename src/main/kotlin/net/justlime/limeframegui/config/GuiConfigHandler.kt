@@ -1,10 +1,8 @@
 package net.justlime.limeframegui.config
 
 import net.justlime.limeframegui.api.LimeFrameAPI
-import net.justlime.limeframegui.models.AnvilGuiSetting
-import net.justlime.limeframegui.models.GuiItem
-import net.justlime.limeframegui.models.GuiSetting
-import net.justlime.limeframegui.models.GuiStyleSheet
+import net.justlime.limeframegui.models.*
+import net.justlime.limeframegui.registry.gui.TemplateCompiler
 import net.justlime.limeframegui.util.FrameConverter
 import net.justlime.limeframegui.util.toGuiItem
 import org.bukkit.Bukkit
@@ -47,13 +45,23 @@ object GuiConfigHandler {
             unbreakable = section.getBoolean(keys.unbreakable, false),
             damage = section.takeIf { it.contains(keys.damage) }?.getInt(keys.damage),
             style = GuiStyleSheet(
-                stylishName = section.takeIf { it.contains(keys.stylishFontName) }?.getBoolean(keys.stylishFontName)
-                    ?: keys.stylishName,
-                stylishLore = section.takeIf { it.contains(keys.stylishFontLore) }?.getBoolean(keys.stylishFontLore)
-                    ?: keys.stylishLore,
+                textSettings = GuiTextSettings(
+                    name = section.getConfigurationSection(keys.textSection)?.let { textSec ->
+                        val rule = TextFormatRule(font = keys.stylishName)
+                        TemplateCompiler.parseTextGroupRule(textSec, "name", rule, keys)
+                        rule
+                    } ?: GuiTextSettings().name,
+                    lore = section.getConfigurationSection(keys.textSection)?.let { textSec ->
+                        val rule = TextFormatRule(font = keys.stylishLore)
+                        TemplateCompiler.parseTextGroupRule(textSec, "lore", rule, keys)
+                        rule
+                    } ?: GuiTextSettings().lore
+                ),
                 clickSoundAlias = soundAlias,
                 action = parsedAction
-            )
+            ),
+            viewRequirements = section.getStringList("view-requirement"),
+            priority = section.getInt("priority", 0),
 
         )
     }
@@ -77,9 +85,8 @@ object GuiConfigHandler {
             rows = section.getInt(keys.inventoryRows, keys.defaultInventoryRows),
             title = section.getString(keys.inventoryTitle, keys.defaultInventoryTitle) ?: keys.defaultInventoryTitle,
             style = GuiStyleSheet(
-                stylishTitle = section.getBoolean(keys.stylishFontTitle, keys.stylishTitle),
-                stylishName = section.getBoolean(keys.stylishFontName, keys.stylishName),
-                stylishLore = section.getBoolean(keys.stylishFontLore, keys.stylishLore),
+                textSettings = guiTextSettings(section),
+
                 clickSoundAlias = section.getString(keys.stylishItemSound)
                     ?: section.getStringList(keys.stylishItemSound).firstOrNull(),
                 openSoundAlias = section.getString(keys.stylishOpenSound)
@@ -89,6 +96,7 @@ object GuiConfigHandler {
             )
         )
     }
+
 
     /**
      * Assembles a standard Bukkit inventory populated directly with flat, indexed configuration parameters.
@@ -142,12 +150,11 @@ object GuiConfigHandler {
             submitSoundAlias = section.getString(keys.anvilSubmitSound) ?: section.getStringList(keys.anvilSubmitSound)
                 .firstOrNull(),
             style = GuiStyleSheet(
-                stylishTitle = section.getBoolean(keys.stylishFontTitle, keys.stylishTitle),
-                stylishName = section.getBoolean(keys.stylishFontName, keys.stylishName),
-                stylishLore = section.getBoolean(keys.stylishFontLore, keys.stylishLore)
+                textSettings = guiTextSettings(section)
             )
         )
     }
+
 
     /**
      * Converts an encoded Base64 serialization block into a usable, individual [ItemStack].
@@ -193,12 +200,18 @@ object GuiConfigHandler {
         section.set(keys.amount, item.amount)
         section.set(keys.unbreakable, item.unbreakable)
         section.set(keys.damage, item.damage)
-        item.style.stylishName.let { section.set(keys.stylishFontName, it) }
-        item.style.stylishLore.let { section.set(keys.stylishFontLore, it) }
+        val textSec = section.createSection(keys.textSection)
+
+        writeRule(textSec,"name", item.style.textSettings.name)
+        writeRule(textSec, "lore", item.style.textSettings.lore)
         item.slot?.let { section.set(keys.slot, it) }
         if (item.slotList.isNotEmpty()) section.set(keys.slotList, item.slotList)
         item.style.clickSoundAlias?.let { section.set(keys.stylishItemSound, it) }
+
+        if (item.viewRequirements.isNotEmpty()) section.set("view-requirement", item.viewRequirements)
+        if (item.priority != 0) section.set("priority", item.priority)
     }
+
 
     /**
      * Compresses and groups multiple [GuiItem] blueprints cleanly into localized item index lists.
@@ -287,10 +300,6 @@ object GuiConfigHandler {
     private fun writeInventorySettingsToSection(section: ConfigurationSection, rows: Int, title: String) {
         section.set(keys.inventoryTitle, title)
         section.set(keys.inventoryRows, rows)
-        section.set(keys.stylishFontTitle, LimeFrameAPI.keys.stylishTitle)
-        section.set(keys.stylishFontName, LimeFrameAPI.keys.stylishName)
-        section.set(keys.stylishFontLore, LimeFrameAPI.keys.stylishLore)
-
         if (!LimeFrameAPI.keys.clickSound.isEmpty()) section.set(
             keys.stylishItemSound,
             "${LimeFrameAPI.keys.clickSound.sound},${LimeFrameAPI.keys.clickSound.pitch},${LimeFrameAPI.keys.clickSound.volume}"
@@ -304,4 +313,35 @@ object GuiConfigHandler {
             "${LimeFrameAPI.keys.closeSound.sound},${LimeFrameAPI.keys.closeSound.pitch},${LimeFrameAPI.keys.closeSound.volume}"
         )
     }
+
+    private fun writeRule(textSec: ConfigurationSection, path: String, rule: TextFormatRule) {
+        val sub = textSec.createSection(path)
+        sub.set(keys.textFont, rule.font)
+        if (rule.prefix.isNotEmpty()) sub.set(keys.textPrefix, rule.prefix)
+        if (rule.suffix.isNotEmpty()) sub.set(keys.textSuffix, rule.suffix)
+        if (rule.wrapLength != -1) sub.set(keys.textWrapLength, rule.wrapLength)
+        if (rule.weights.isNotEmpty()) sub.set(keys.textWeight, rule.weights)
+        if (rule.textCase != net.justlime.limeframegui.enums.TextCase.REGULAR) {
+            sub.set(keys.textCase, rule.textCase.name.lowercase().replace("_", "-"))
+        }
+    }
+
+    private fun guiTextSettings(section: ConfigurationSection): GuiTextSettings = GuiTextSettings(
+        title = section.getConfigurationSection(keys.textSection)?.let { textSec ->
+            val rule = TextFormatRule(font = keys.stylishTitle)
+            TemplateCompiler.parseTextGroupRule(textSec, "title", rule, keys)
+            rule
+        } ?: GuiTextSettings().title,
+        name = section.getConfigurationSection(keys.textSection)?.let { textSec ->
+            val rule = TextFormatRule(font = keys.stylishName)
+            TemplateCompiler.parseTextGroupRule(textSec, "name", rule, keys)
+            rule
+        } ?: GuiTextSettings().name,
+        lore = section.getConfigurationSection(keys.textSection)?.let { textSec ->
+            val rule = TextFormatRule(font = keys.stylishLore)
+            TemplateCompiler.parseTextGroupRule(textSec, "lore", rule, keys)
+            rule
+        } ?: GuiTextSettings().lore
+    )
+
 }

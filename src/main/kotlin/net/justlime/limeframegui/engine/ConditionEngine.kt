@@ -1,10 +1,19 @@
 package net.justlime.limeframegui.engine
 
 import me.clip.placeholderapi.PlaceholderAPI
+import org.apache.commons.jexl3.JexlBuilder
+import org.apache.commons.jexl3.JexlEngine
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 
 object ConditionEngine {
+
+    private val jexl: JexlEngine = JexlBuilder()
+        .cache(512)
+        .strict(true)
+        .silent(false)
+        .create()
+
 
     /**
      * Evaluates a list of requirement strings for a player.
@@ -18,42 +27,28 @@ object ConditionEngine {
     private fun evaluateSingle(player: Player, conditionString: String): Boolean {
         val str = conditionString.trim()
 
-        // 1. Simple Permission Check: "[permission] betterteams.admin"
+        // Simple Permission Check: "[permission] betterteams.admin"
         if (str.startsWith("[permission]", ignoreCase = true)) {
             val perm = str.removePrefix("[permission]").trim()
             return player.hasPermission(perm)
         }
 
-        // 2. Simple Group Check (Assuming Vault or LuckPerms API here, simplified for example)
+        // Simple Group Check (Assuming Vault or LuckPerms API here, simplified for example)
         if (str.startsWith("[group]", ignoreCase = true)) {
             val group = str.removePrefix("[group]").trim()
             return player.hasPermission("group.$group") // Basic LuckPerms fallback check
         }
 
-        // 3. Complex Condition Check
+        // Complex Condition Check
         if (str.startsWith("[condition]", ignoreCase = true)) {
             var mathExpression = str.removePrefix("[condition]").trim()
-
-            // A) Resolve all Placeholders first (e.g., {player_balance} -> 500)
-            // Replace your custom {} with %% for PAPI
             mathExpression = mathExpression.replace("{", "%").replace("}", "%")
             if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
                 mathExpression = PlaceholderAPI.setPlaceholders(player, mathExpression)
             }
-
-            // B) Resolve nested [permission] and [group] tags inside the string to "true" or "false"
             mathExpression = resolveNestedTags(player, mathExpression)
-
-            // C) Evaluate the final Boolean/Math Expression!
-            // Example resulting string: "500 >= 100 && (15 > 10 || false || true)"
-            return evaluateBooleanLogic(mathExpression) 
+            return evaluateBooleanLogic(mathExpression)
         }
-
-        // Support for your old format just in case: "permission: node"
-        if (str.lowercase().startsWith("permission:")) {
-            return player.hasPermission(str.split(":")[1].trim())
-        }
-
         return false
     }
 
@@ -82,11 +77,16 @@ object ConditionEngine {
      * or a similar lightweight expression evaluator to your build.gradle!
      */
     private fun evaluateBooleanLogic(expression: String): Boolean {
-        // TODO: Implement your preferred Math/Boolean script net.justlime.limeframegui.engine here.
-        // For standard Bukkit plugins, developers usually hook into PlaceholderAPI's 
-        // Math expansion, or use a lightweight library to evaluate the final string.
-        
-        // For now, returning true to prevent crashing while you implement the math parser
-        return true 
+        return try {
+            val cleanExpr = expression
+                .replace(" AND ", " && ", ignoreCase = true)
+                .replace(" OR ", " || ", ignoreCase = true)
+            val jexlExpression = jexl.createExpression(cleanExpr)
+            val result = jexlExpression.evaluate(null)
+            result as? Boolean ?: false
+        } catch (e: Exception) {
+            Bukkit.getLogger().warning("[LimeFrameGUI] Failed to evaluate condition: '$expression'. Error: ${e.message}")
+            false
+        }
     }
 }

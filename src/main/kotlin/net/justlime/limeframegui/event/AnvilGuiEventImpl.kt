@@ -7,6 +7,7 @@ import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.models.AnvilGuiSetting
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiStyleSheet
+import net.justlime.limeframegui.models.TextFormatRule
 import net.justlime.limeframegui.models.registry.GuiSound
 import net.justlime.limeframegui.registry.component.SoundRegistry
 import net.kyori.adventure.text.Component
@@ -30,10 +31,9 @@ class AnvilGuiEventImpl(
             val context = setting.style.copy()
             if (context.viewer == null) context.viewer = player
 
-            val rawTitle = FontStyle.applyStyle(setting.title, context, context.stylishTitle)
-            val rawLabel = FontStyle.applyStyle(setting.label, context, false)
+            val rawTitle = FontStyle.applyStyle(setting.title, context, context.textSettings.title)
+            val rawLabel = FontStyle.applyStyle(setting.label, context, TextFormatRule())
             val jsonTitle = componentToJson(rawTitle)
-
             val styledLeft = styleItem(setting.leftItem, context)
             val styledRight = styleItem(setting.rightItem, context)
             val styledOutput = styleItem(setting.outPutItem, context)
@@ -141,8 +141,8 @@ class AnvilGuiEventImpl(
 
     private fun styleItem(item: GuiItem, context: GuiStyleSheet): GuiItem {
         return item.clone().apply {
-            name = FontStyle.applyStyle(name, context, style.stylishName)
-            lore = FontStyle.applyStyle(lore, context, style.stylishLore)
+            name = FontStyle.applyStyle(name, context, style.textSettings.name)
+            lore = FontStyle.applyStyle(lore, context, style.textSettings.lore)
         }
     }
 

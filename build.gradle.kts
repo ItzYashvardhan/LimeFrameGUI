@@ -43,6 +43,7 @@ dependencies {
     compileOnly(libs.bstats)
     compileOnly(libs.folialib)
     compileOnly(libs.anvilgui)
+    implementation("org.apache.commons:commons-jexl3:3.3")
 
 }
 

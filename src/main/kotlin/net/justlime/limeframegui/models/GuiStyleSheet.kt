@@ -9,9 +9,9 @@ data class GuiStyleSheet(
     var viewer: Player? = null,
     var offlinePlayer: OfflinePlayer? = null,
     var placeholder: MutableMap<String, String> = mutableMapOf(),
-    var stylishTitle: Boolean = LimeFrameAPI.keys.stylishTitle,
-    var stylishName: Boolean = LimeFrameAPI.keys.stylishName,
-    var stylishLore: Boolean = LimeFrameAPI.keys.stylishLore,
+
+    // The Advanced Text Formatting Block
+    var textSettings: GuiTextSettings = GuiTextSettings(),
 
     // The compiled lists for instant playback
     var clickSounds: List<GuiSound> = emptyList(),
@@ -23,23 +23,21 @@ data class GuiStyleSheet(
     var openSoundAlias: String? = null,
     var closeSoundAlias: String? = null,
     var action: String? = null
-
 ) {
 
     fun isEmpty(): Boolean {
         return viewer == null &&
                 offlinePlayer == null &&
                 placeholder.isEmpty() &&
-                stylishTitle == LimeFrameAPI.keys.stylishTitle &&
-                stylishName == LimeFrameAPI.keys.stylishName &&
-                stylishLore == LimeFrameAPI.keys.stylishLore &&
                 clickSoundAlias == null &&
                 openSoundAlias == null &&
                 closeSoundAlias == null &&
                 action == null &&
                 clickSounds.isEmpty() &&
                 openSounds.isEmpty() &&
-                closeSounds.isEmpty()
+                closeSounds.isEmpty() &&
+                textSettings.isEmpty()
+
     }
 
     fun clone(): GuiStyleSheet {
@@ -47,9 +45,6 @@ data class GuiStyleSheet(
             viewer = viewer,
             offlinePlayer = offlinePlayer,
             placeholder = placeholder.toMutableMap(),
-            stylishTitle = stylishTitle,
-            stylishName = stylishName,
-            stylishLore = stylishLore,
 
             // Deep copy the lists
             clickSounds = ArrayList(clickSounds),
@@ -59,7 +54,11 @@ data class GuiStyleSheet(
             // aliases
             clickSoundAlias = clickSoundAlias,
             openSoundAlias = openSoundAlias,
-            closeSoundAlias = closeSoundAlias
+            closeSoundAlias = closeSoundAlias,
+
+            action = action,
+            textSettings = textSettings.clone()
+
         )
     }
 }

@@ -93,12 +93,12 @@ object ActionRegistry : IRegistry {
     /**
      * THE MAGIC BEHAVIOR PARSER (Detects Simple Lists vs 'When' Blocks)
      */
-    private fun parseBehavior(section: ConfigurationSection, key: String): ActionBehavior {
+    fun parseBehavior(section: ConfigurationSection, key: String): ActionBehavior {
         if (section.isList(key)) {
             return ActionBehavior.Simple(PlaceholderRegistry.resolve(section.getStringList(key)))
         }
 
-        // 🌟 FIX 3: Catch single-string actions so they don't get ignored!
+        // 🌟 Catch single-string actions so they don't get ignored!
         if (section.isString(key)) {
             val singleString = section.getString(key)!!
             return ActionBehavior.Simple(listOf(PlaceholderRegistry.resolve(singleString)))

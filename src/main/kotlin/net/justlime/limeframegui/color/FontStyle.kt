@@ -1,9 +1,11 @@
 package net.justlime.limeframegui.color
 
 import me.clip.placeholderapi.PlaceholderAPI
+import net.justlime.limeframegui.engine.TextEngine
 import net.justlime.limeframegui.enums.CapsState
 import net.justlime.limeframegui.enums.ColorType
 import net.justlime.limeframegui.models.GuiStyleSheet
+import net.justlime.limeframegui.models.TextFormatRule
 import net.justlime.limeframegui.registry.component.FontRegistry
 import net.justlime.limeframegui.util.VersionHandler
 import org.bukkit.Bukkit
@@ -35,9 +37,10 @@ object FontStyle {
      * Always returns a String.
      * - Priority to [OfflinePlayer] if both player type given
      */
-    fun applyStyle(text: String, style: GuiStyleSheet, useStylishFont: Boolean): String {
+    fun applyStyle(text: String, style: GuiStyleSheet, rule: TextFormatRule): String {
         var newText = text
 
+        // Placeholders
         val playerName = style.offlinePlayer?.name
         newText = newText.customPlaceholder(playerName, style.placeholder)
 
@@ -49,10 +52,22 @@ object FontStyle {
             }
         }
 
+        // Apply Casing and Word Wrap
+        newText = TextEngine.applyCasing(newText, rule.textCase)
+        newText = TextEngine.applyWrap(newText, rule.wrapLength)
+
+        // Format Engine & Parsing
         val coloredText = when (colorType) {
-            ColorType.LEGACY -> ChatColor.translateAlternateColorCodes('&', newText)
+            ColorType.LEGACY -> {
+                ChatColor.translateAlternateColorCodes('&', newText)
+            }
             ColorType.MINI_MESSAGE -> {
+                // Translate old legacy to Kyori format
                 newText = newText.replaceLegacyToMini()
+
+                // Wrap the text in the prefix, suffix, and weights
+                newText = TextEngine.applyFormatTags(newText, rule)
+
                 try {
                     miniMessage?.legacyToMini(newText) ?: newText
                 } catch (e: Exception) {
@@ -62,14 +77,41 @@ object FontStyle {
             }
         }
 
-        val smallCapsText = coloredText.toSmallCaps(style.viewer, useStylishFont)
-
-
-        return smallCapsText
+        // Apply Small Caps Font
+        return coloredText.toSmallCaps(style.viewer, rule.font)
     }
 
-    fun applyStyle(text: List<String>, styleSheet: GuiStyleSheet, useStylishFont: Boolean): List<String> {
-        return text.map { applyStyle(it, styleSheet, useStylishFont) }
+    /**
+     * Processes a list of lore lines, handling line-wrapping color bleeds.
+     */
+    fun applyStyle(textList: List<String>, styleSheet: GuiStyleSheet, rule: TextFormatRule): List<String> {
+        val processedList = mutableListOf<String>()
+
+        for (line in textList) {
+            val processedLine = applyStyle(line, styleSheet, rule)
+
+            // If the wrapLength engine added a newline (\n), split it into separate lore lines!
+            if (processedLine.contains("\n")) {
+                val splits = processedLine.split("\n")
+                var lastColors = ""
+
+                for (i in splits.indices) {
+                    val currentLine = splits[i]
+                    if (i == 0) {
+                        processedList.add(currentLine)
+                        lastColors = extractLastColors(currentLine)
+                    } else {
+                        // 🌟 FIX: Prepend §r to kill Bukkit's default Italic Pink, then re-apply the last colors!
+                        val restoredLine = "§r$lastColors$currentLine"
+                        processedList.add(restoredLine)
+                        lastColors = extractLastColors(restoredLine)
+                    }
+                }
+            } else {
+                processedList.add(processedLine)
+            }
+        }
+        return processedList
     }
 
     private fun String.replaceLegacyToMini(): String {
@@ -106,8 +148,6 @@ object FontStyle {
      * - Automatically selects the best font map for the viewer's version.
      * - Falls back to the server version if the viewer is null.
      * - Obeys <caps> and <no-caps> tags to override the default behavior.
-     */
-    /**
      * Converts a string to small caps with advanced tag support.
      */
     fun String.toSmallCaps(viewer: Player?, useSmallCaps: Boolean?): String {
@@ -129,7 +169,6 @@ object FontStyle {
             val clientVersion = VersionHandler.parseVersion(versionStr)
             val reqVersion = VersionHandler.parseVersion(versionKey)
 
-            // If the client version is greater than or equal to the required version, pick it!
             VersionHandler.compareVersions(clientVersion, reqVersion) >= 0
         }
 
@@ -141,6 +180,17 @@ object FontStyle {
 
         while (i < this.length) {
             val char = this[i]
+
+            // 🌟 FIX 1: Protect existing emojis and 4-byte characters already in the text!
+            if (char.isHighSurrogate()) {
+                result.append(char)
+                if (i + 1 < this.length) {
+                    result.append(this[i + 1])
+                    i++
+                }
+                i++
+                continue
+            }
 
             // Check for tags like <caps> or <no-caps>
             if (char == '<') {
@@ -159,14 +209,12 @@ object FontStyle {
                 }
             }
 
-            // Determine if the character should be converted
             val shouldConvert = when (currentCapsState) {
                 CapsState.FORCE_ON -> true
                 CapsState.FORCE_OFF -> false
                 CapsState.DEFAULT -> useSmallCaps == true
             }
 
-            // Append character, converting if necessary
             if (shouldConvert && selectedFontMap != null) {
                 when (char) {
                     '&', '§' -> { // Skip color codes
@@ -176,8 +224,15 @@ object FontStyle {
                             i++
                         }
                     }
-                    // Fetch the replacement character from our map
-                    else -> result.append(selectedFontMap[char.lowercaseChar()] ?: char)
+                    else -> {
+                        // 🌟 FIX 2: Append the replacement as a full String, not a single Char!
+                        val replacement = selectedFontMap[char.lowercaseChar()]
+                        if (replacement != null) {
+                            result.append(replacement) // Appends the String ("𝟬")
+                        } else {
+                            result.append(char)
+                        }
+                    }
                 }
             } else {
                 result.append(char)
@@ -186,5 +241,37 @@ object FontStyle {
         }
 
         return result.toString()
+    }
+
+    /**
+     * Extracts the last active color and formatting codes from a legacy string.
+     * Fully supports modern Kyori Hex formats (§x§R§R§G§G§B§B).
+     */
+    private fun extractLastColors(text: String): String {
+        var result = ""
+        var index = 0
+        while (index < text.length - 1) {
+            if (text[index] == '§' || text[index] == '&') {
+                val code = text[index + 1].lowercaseChar()
+                if (code in "0123456789abcdef") {
+                    result = "§$code"
+                    index++
+                } else if (code in "klmno") {
+                    result += "§$code"
+                    index++
+                } else if (code == 'r') {
+                    result = ""
+                    index++
+                } else if (code == 'x') {
+                    // Modern Hex format check (requires 14 chars total: §x§1§2§3§4§5§6)
+                    if (index + 13 < text.length) {
+                        result = text.substring(index, index + 14)
+                        index += 13
+                    }
+                }
+            }
+            index++
+        }
+        return result
     }
 }

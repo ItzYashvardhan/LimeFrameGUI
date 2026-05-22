@@ -44,9 +44,6 @@ internal object ExampleFrameManager {
         var value = true
         val setting = GuiSetting(6, "Example %betterteams_name%").apply {
             this.style.apply {
-                stylishName = true
-                stylishLore = true
-                stylishTitle = true
             }
         }
     }

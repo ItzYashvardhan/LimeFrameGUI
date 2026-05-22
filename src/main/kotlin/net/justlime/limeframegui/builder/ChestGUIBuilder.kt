@@ -3,8 +3,8 @@ package net.justlime.limeframegui.builder
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.enums.ChestGuiActions
 import net.justlime.limeframegui.event.GuiClick
-import net.justlime.limeframegui.event.GuiEventImpl
 import net.justlime.limeframegui.event.GuiEventHandler
+import net.justlime.limeframegui.event.GuiEventImpl
 import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.menu.GuiPage
 import net.justlime.limeframegui.menu.GuiPageImpl
@@ -134,11 +134,13 @@ class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
         }
 
         // Copy Cache (The Blueprint Data)
-        globalPage.itemCache.forEach { (slot, guiItem) ->
-            val isDynamic = globalPage.trackAddItemSlot.containsKey(slot)
+        globalPage.getItems().forEach { guiItem ->
+            val slot = guiItem.slot
+            val isDynamic = slot != null && globalPage.trackAddItemSlot.containsKey(slot)
 
             if (!isDynamic) {
-                newPage.itemCache[slot] = guiItem
+                // Add a cloned instance so the pages don't share memory references
+                newPage.itemCache.add(guiItem.clone())
             }
         }
 

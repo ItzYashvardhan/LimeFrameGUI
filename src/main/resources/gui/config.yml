@@ -1,0 +1,23 @@
+main:
+  rows: 3
+  text:
+    font:
+      title: true //Custom font for title
+      name: true
+      lore: true
+    weight:
+      title: BOLD
+      name:
+        - BOLD
+        - UNDERLINED
+      lore: ITALIC
+    color:
+      name: GREEN
+    gradient:
+      title-prefix: <gradient:blue:red>
+      title-suffix: </gradient>
+    case:
+      tile: UPPERCASE
+      name: CammelCase
+      Lore: Regular //(Default) or More case like hOME or Home or HOME or home or setHome or set_home or set-home
+

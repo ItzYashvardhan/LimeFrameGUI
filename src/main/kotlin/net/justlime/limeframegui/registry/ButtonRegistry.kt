@@ -1,10 +1,10 @@
-package net.justlime.limeframegui.registry.component
+package net.justlime.limeframegui.registry
 
 import net.justlime.limeframegui.event.GuiEventHandler
 import org.bukkit.entity.Player
 
 object ButtonRegistry {
-    
+
     // Stores the identifier and the block of code to run
     private val codeActions = mutableMapOf<String, (Player, GuiEventHandler) -> Unit>()
 
@@ -20,7 +20,7 @@ object ButtonRegistry {
     /**
      * Internal Method: Runs the registered code. Returns true if found.
      */
-    fun execute(identifier: String, player: Player, gui: GuiEventHandler): Boolean {
+    internal fun execute(identifier: String, player: Player, gui: GuiEventHandler): Boolean {
         val action = codeActions[identifier]
         if (action != null) {
             action.invoke(player, gui)

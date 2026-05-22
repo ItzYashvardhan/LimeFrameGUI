@@ -7,24 +7,91 @@ import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.registry.GuiActionPack
 import net.justlime.limeframegui.models.registry.GuiSound
 import net.justlime.limeframegui.registry.component.ActionRegistry
-import net.justlime.limeframegui.registry.component.ButtonRegistry
+import net.justlime.limeframegui.registry.ButtonRegistry
 import net.justlime.limeframegui.registry.component.SoundRegistry
+import net.justlime.limeframegui.registry.ActionTagRegistry
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.ClickType
 
 object ActionEngine {
 
+    init {
+        ActionTagRegistry.register("[message]") { player, payload, _ ->
+            // TODO: Pass through Hex/MiniMessage color translator
+            player.sendMessage(payload)
+        }
+
+        ActionTagRegistry.register("[sound]") { player, payload, _ ->
+            GuiSound.playPack(player, SoundRegistry.get(payload))
+        }
+
+        ActionTagRegistry.register("[console]") { player, payload, _ ->
+            val cmd = payload.replace("{player}", player.name)
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd)
+        }
+
+        ActionTagRegistry.register("[player]") { player, payload, _ ->
+            val cmd = payload.replace("{player}", player.name)
+            player.performCommand(cmd)
+        }
+
+        ActionTagRegistry.register("[actions]") { player, payload, handler ->
+            executePack(player, payload, ClickType.UNKNOWN, handler)
+        }
+
+        ActionTagRegistry.register("[run]") { player, payload, handler ->
+            runCustomJavaCode(player, payload, handler)
+        }
+
+        ActionTagRegistry.register("[code]") { player, payload, handler ->
+            runCustomJavaCode(player, payload, handler)
+        }
+
+        ActionTagRegistry.register("[open_page]") { player, payload, handler ->
+            val pageId = payload.toIntOrNull() ?: 0
+            handler?.open(player, pageId)
+        }
+
+        ActionTagRegistry.register("[open_gui]") { player, payload, _ ->
+            GuiManager.open(player, payload)
+        }
+
+        ActionTagRegistry.register("[open]") { player, payload, handler ->
+            val parts = payload.split(" ")
+            val guiId = parts[0]
+            val pageId = parts.getOrNull(1)?.toIntOrNull()
+            GuiManager.open(player, guiId)
+            if (pageId != null) handler?.open(player, pageId)
+        }
+
+        ActionTagRegistry.register("[close]") { player, _, _ ->
+            player.closeInventory()
+        }
+
+        ActionTagRegistry.register("[update]") { _, _, handler ->
+            handler?.session?.softRefresh()
+        }
+
+        ActionTagRegistry.register("[refresh]") { _, _, handler ->
+            handler?.session?.softRefresh()
+        }
+
+        ActionTagRegistry.register("[hard_refresh]") { _, _, handler ->
+            handler?.session?.refresh()
+        }
+    }
+
     /**
      * Executes an action pack.
-     * @param gui The active GUI handler (used for [close] and [open] tags).
+     * @param handler The active GUI handler (nullable, as actions can run before GUI opens).
      */
-    fun executePack(player: Player, actionPackId: String, clickType: ClickType, gui: GuiEventHandler) {
+    fun executePack(player: Player, actionPackId: String, clickType: ClickType, handler: GuiEventHandler?) {
         val pack = ActionRegistry.get(actionPackId)
 
         if (pack == null) {
             // Fallback: If it's not in the YAML registry, it might be a hardcoded Java action!
-            runCustomJavaCode(player, actionPackId, gui)
+            runCustomJavaCode(player, actionPackId, handler)
             return
         }
 
@@ -33,19 +100,19 @@ object ActionEngine {
                 // Loop through sequence priorities
                 for (node in pack.nodes) {
                     if (ConditionEngine.checkRequirements(player, node.requirements)) {
-                        executeStandardNode(player, node, clickType, gui)
+                        executeStandardNode(player, node, clickType, handler)
                         return // First match wins!
                     }
                 }
                 // Fallback to 'else' block if none matched
-                pack.fallback?.let { executeStandardNode(player, it, clickType, gui) }
+                pack.fallback?.let { executeStandardNode(player, it, clickType, handler) }
             }
 
             is GuiActionPack.Standard -> {
                 if (ConditionEngine.checkRequirements(player, pack.requirements)) {
-                    executeStandardNode(player, pack, clickType, gui)
+                    executeStandardNode(player, pack, clickType, handler)
                 } else {
-                    executeBehavior(player, pack.denyBehavior, gui)
+                    executeBehavior(player, pack.denyBehavior, handler)
                 }
             }
         }
@@ -55,13 +122,14 @@ object ActionEngine {
         player: Player,
         node: GuiActionPack.Standard,
         clickType: ClickType,
-        gui: GuiEventHandler
+        gui: GuiEventHandler?
     ) {
         val clickString = clickType.name.lowercase().replace("_", "-")
 
         // Priority: 1. Exact Click (e.g., shift-left-click) -> 2. Base (click) -> 3. Do nothing
         val behavior = node.clickActions["$clickString-click"]
             ?: node.clickActions[clickString]
+            ?: (if (clickString.contains("shift")) node.clickActions["shift-click"] else null)
             ?: node.clickActions["click"]
             ?: return
 
@@ -71,16 +139,19 @@ object ActionEngine {
     /**
      * Resolves Switch-Case (When) logic and PlaceholderAPI math.
      */
-    private fun executeBehavior(player: Player, behavior: ActionBehavior, gui: GuiEventHandler) {
+    fun executeBehavior(player: Player, behavior: ActionBehavior, handler: GuiEventHandler?) {
         when (behavior) {
-            is ActionBehavior.Simple -> runActions(player, behavior.actions, gui)
+            is ActionBehavior.Simple -> runActions(player, behavior.actions, handler)
 
             is ActionBehavior.When -> {
                 // 1. Resolve target value via PAPI
-                var resolvedValue = behavior.valuePlaceholder.replace("{", "%").replace("}", "%")
+                val rawPlaceholder = behavior.valuePlaceholder
+                var resolvedValue = rawPlaceholder.replace("{", "%").replace("}", "%")
+
                 if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
                     resolvedValue = PlaceholderAPI.setPlaceholders(player, resolvedValue)
                 }
+                if (resolvedValue.isNullOrEmpty()) resolvedValue = "false"
                 resolvedValue = resolvedValue.removeSuffix(".0") // Clean Vault decimals
 
                 // 2. Find exact match, fallback to "else" or "default"
@@ -89,84 +160,44 @@ object ActionEngine {
                     ?: behavior.results["default"]
 
                 if (matchedBehavior != null) {
-                    executeBehavior(player, matchedBehavior, gui)
+                    executeBehavior(player, matchedBehavior, handler)
                 }
             }
         }
     }
 
-    /**
-     * The actual tag parser that runs the Bukkit actions.
-     */
-    private fun runActions(player: Player, actions: List<String>, gui: GuiEventHandler) {
+    private fun runActions(player: Player, actions: List<String>, handler: GuiEventHandler?) {
+        val registeredTags = ActionTagRegistry.getTags()
+
         for (action in actions) {
             val str = action.trim()
-            when {
-                str.startsWith("[message]", true) -> {
-                    // TODO: Pass through your Hex/MiniMessage color translator
-                    player.sendMessage(str.removePrefix("[message]").trim())
-                }
+            val lowerStr = str.lowercase()
+            var matched = false
 
-                str.startsWith("[sound]", true) -> {
-                    val alias = str.removePrefix("[sound]").trim()
-                    GuiSound.playPack(player, SoundRegistry.get(alias))
-                }
+            for ((tag, executor) in registeredTags) {
+                if (lowerStr.startsWith(tag)) {
+                    // Extract payload safely, keeping original casing (e.g. "Hello World" from "[message] Hello World")
+                    val payload = str.substring(tag.length).trim()
 
-                str.startsWith("[console]", true) -> {
-                    val cmd = str.removePrefix("[console]").trim().replace("%player_name%", player.name)
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd)
+                    // Execute the matched tag logic
+                    executor.execute(player, payload, handler)
+                    matched = true
+                    break // Stop checking other tags for this line
                 }
+            }
 
-                str.startsWith("[player]", true) -> {
-                    val cmd = str.removePrefix("[player]").trim().replace("%player_name%", player.name)
-                    player.performCommand(cmd)
-                }
-
-                str.startsWith("[actions]", true) -> {
-                    val nextPack = str.removePrefix("[actions]").trim()
-                    executePack(player, nextPack, ClickType.UNKNOWN, gui)
-                }
-
-                str.startsWith("[run]", true) || str.startsWith("[code]", true) -> {
-                    val codeId = str.replace("[run]", "", true).replace("[code]", "", true).trim()
-                    runCustomJavaCode(player, codeId, gui)
-                }
-
-                str.startsWith("[open_page]", true) -> {
-                    val pageStr = str.removePrefix("[open]").trim()
-                    val pageId = pageStr.toIntOrNull() ?: 0
-                    gui.open(player, pageId)
-                }
-
-                str.startsWith("[open_gui]", true) -> {
-                    val guiId = str.removePrefix("[open_gui]").trim()
-                    GuiManager.open(player, guiId)
-                }
-
-                str.startsWith("[open]",true) ->{
-                    val parts = str.removePrefix("[open]").trim().split(" ")
-                    val guiId = parts[0]
-                    val pageId = parts.getOrNull(1)?.toIntOrNull()
-                    GuiManager.open(player, guiId)
-                    if (pageId != null) gui.open(player, pageId)
-                }
-
-                str.startsWith("[close]", true) -> {
-                    player.closeInventory()
-                }
-                str.equals("[update]", true) || str.equals("[refresh]", true) -> {
-                    gui.session.softRefresh()
-                }
-
-                str.equals("[hard_refresh]", true) -> {
-                    gui.session.refresh()
-                }
-
+            if (!matched) {
+                Bukkit.getLogger().warning("[LimeFrameGUI] Unknown action tag used: '$str'")
             }
         }
     }
 
-    private fun runCustomJavaCode(player: Player, identifier: String, gui: GuiEventHandler) {
+    private fun runCustomJavaCode(player: Player, identifier: String, gui: GuiEventHandler?) {
+        if (gui == null) {
+            println("[LimeFrameGUI] Warning: Attempted to run Java code '$identifier' outside of a GUI context.")
+            return
+        }
+
         val success = ButtonRegistry.execute(identifier, player, gui)
         if (!success) {
             println("[LimeFrameGUI] Warning: Button clicked with unknown action ID or unregistered Java Code: '$identifier'")
