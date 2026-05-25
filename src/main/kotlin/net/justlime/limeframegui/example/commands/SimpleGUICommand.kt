@@ -96,9 +96,9 @@ class SimpleGUICommand() : CommandHandler {
             val pageItem = ItemStack(Material.BOOK).toGuiItem().apply { name = "Open Pager GUI"; }
 
             val staticExtraItem =
-                GuiItem(Material.PAPER, name = "Entered $value", lore = listOf("§aPlayTime: %statistic_time_played%"))
+                GuiItem(ItemStack(Material.PAPER), name = "Entered $value", lore = listOf("§aPlayTime: %statistic_time_played%"))
             val dynamicExtraItem = GuiItem(
-                Material.PAPER,
+                ItemStack(Material.PAPER),
                 nameState = { "Entered $value" },
                 loreState = { listOf("§aPlayTime: %statistic_time_played%") })
             addItem(pageItem) {
@@ -124,7 +124,7 @@ class SimpleGUICommand() : CommandHandler {
                     }
                 }
 
-                event.update()
+                event.update(this@ChestGUI.setting)
 
             }
 

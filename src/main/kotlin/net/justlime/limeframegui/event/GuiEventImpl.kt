@@ -2,10 +2,11 @@ package net.justlime.limeframegui.event
 
 import net.justlime.limeframegui.engine.ActionEngine
 import net.justlime.limeframegui.integration.FoliaLibHook
+import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.models.GuiSetting
+import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
 import net.justlime.limeframegui.models.registry.GuiSound
 import net.justlime.limeframegui.registry.component.SoundRegistry
-import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.session.GuiSession
 import net.justlime.limeframegui.util.FrameAdapter
 import net.justlime.limeframegui.util.item
@@ -134,7 +135,8 @@ class GuiEventImpl(override var session: GuiSession, private val setting: GuiSet
         // Priority 4: Action Engine
         val actionId = event.item?.style?.action?.removePrefix("actions.")
         if (actionId != null) {
-            ActionEngine.executePack(player, actionId, event.click, this)
+            val response = ActionTagRegistryResponse(player = player, payload = "", handler = this, setting)
+            ActionEngine.executePack(response, actionId, event.click)
         }
 
         // Play Click Sound

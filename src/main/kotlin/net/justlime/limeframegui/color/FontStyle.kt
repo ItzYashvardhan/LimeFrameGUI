@@ -12,10 +12,12 @@ import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
+import java.util.concurrent.ConcurrentHashMap
 
 object FontStyle {
-    var miniMessage: IMiniMessage? = null
+    private val fontCache = ConcurrentHashMap<String, Map<Char, String>>()
     private lateinit var colorType: ColorType
+    var miniMessage: IMiniMessage? = null
 
     fun setColorType(color: ColorType) {
         colorType = color
@@ -61,6 +63,7 @@ object FontStyle {
             ColorType.LEGACY -> {
                 ChatColor.translateAlternateColorCodes('&', newText)
             }
+
             ColorType.MINI_MESSAGE -> {
                 // Translate old legacy to Kyori format
                 newText = newText.replaceLegacyToMini()
@@ -115,22 +118,33 @@ object FontStyle {
     }
 
     private fun String.replaceLegacyToMini(): String {
-        return this.replace("§0", "<black>").replace("§1", "<dark_blue>").replace("§2", "<dark_green>")
-            .replace("§3", "<dark_aqua>").replace("§4", "<dark_red>").replace("§5", "<dark_purple>")
-            .replace("§6", "<gold>").replace("§7", "<gray>")
-            .replace("§8", "<dark_gray>").replace("§9", "<blue>").replace("§a", "<green>").replace("§b", "<aqua>")
-            .replace("§c", "<red>").replace("§d", "<light_purple>").replace("§e", "<yellow>").replace("§f", "<white>")
-            .replace("§l", "<bold>")
-            .replace("§m", "<strikethrough>").replace("§n", "<underlined>").replace("§o", "<italic>")
-            .replace("§r", "<reset>").replace("&0", "<black>").replace("&1", "<dark_blue>")
-            .replace("&2", "<dark_green>").replace("&3", "<dark_aqua>")
-            .replace("&4", "<dark_red>").replace("&5", "<dark_purple>").replace("&6", "<gold>").replace("&7", "<gray>")
-            .replace("&8", "<dark_gray>").replace("&9", "<blue>").replace("&a", "<green>").replace("&b", "<aqua>")
-            .replace("&c", "<red>")
-            .replace("&d", "<light_purple>").replace("&e", "<yellow>").replace("&f", "<white>").replace("&l", "<bold>")
-            .replace("&m", "<strikethrough>").replace("&n", "<underlined>").replace("&o", "<italic>")
-            .replace("&r", "<reset>")
-
+        if (!this.contains('§') && !this.contains('&')) return this
+        val builder = StringBuilder(this.length + 16)
+        var i = 0
+        while (i < this.length) {
+            val c = this[i]
+            if ((c == '§' || c == '&') && i + 1 < this.length) {
+                val next = this[i + 1].lowercaseChar()
+                val replacement = when (next) {
+                    '0' -> "<black>"; '1' -> "<dark_blue>"; '2' -> "<dark_green>"
+                    '3' -> "<dark_aqua>"; '4' -> "<dark_red>"; '5' -> "<dark_purple>"
+                    '6' -> "<gold>"; '7' -> "<gray>"; '8' -> "<dark_gray>"
+                    '9' -> "<blue>"; 'a' -> "<green>"; 'b' -> "<aqua>"
+                    'c' -> "<red>"; 'd' -> "<light_purple>"; 'e' -> "<yellow>"
+                    'f' -> "<white>"; 'l' -> "<bold>"; 'm' -> "<strikethrough>"
+                    'n' -> "<underlined>"; 'o' -> "<italic>"; 'r' -> "<reset>"
+                    else -> null
+                }
+                if (replacement != null) {
+                    builder.append(replacement)
+                    i += 2
+                    continue
+                }
+            }
+            builder.append(c)
+            i++
+        }
+        return builder.toString()
     }
 
     private fun String.customPlaceholder(name: String?, customPlaceholders: Map<String, String>?): String {
@@ -151,28 +165,11 @@ object FontStyle {
      * Converts a string to small caps with advanced tag support.
      */
     fun String.toSmallCaps(viewer: Player?, useSmallCaps: Boolean?): String {
-        val fontMaps = FontRegistry.getFonts
-        if (fontMaps.isEmpty() && useSmallCaps != true) return this
+        if (useSmallCaps != true && FontRegistry.getFonts.isEmpty()) return this
 
-        val bestVersionKey = fontMaps.keys.sortedWith { v1, v2 ->
-            VersionHandler.compareVersions(
-                VersionHandler.parseVersion(v2),
-                VersionHandler.parseVersion(v1)
-            )
-        }.firstOrNull { versionKey ->
-            val versionStr = if (viewer != null) {
-                VersionHandler.getClientVersion(viewer)
-            } else {
-                VersionHandler.getNativeServerVersion()
-            }
-
-            val clientVersion = VersionHandler.parseVersion(versionStr)
-            val reqVersion = VersionHandler.parseVersion(versionKey)
-
-            VersionHandler.compareVersions(clientVersion, reqVersion) >= 0
-        }
-
-        val selectedFontMap = fontMaps[bestVersionKey]
+        // 🌟 FIX: Grab the fully prepared map from the cache.
+        // We completely removed the sorting block from here!
+        val selectedFontMap = getFontMapCached(viewer)
 
         val result = StringBuilder()
         var i = 0
@@ -181,7 +178,7 @@ object FontStyle {
         while (i < this.length) {
             val char = this[i]
 
-            // 🌟 FIX 1: Protect existing emojis and 4-byte characters already in the text!
+            // Protect existing emojis and 4-byte characters
             if (char.isHighSurrogate()) {
                 result.append(char)
                 if (i + 1 < this.length) {
@@ -224,11 +221,12 @@ object FontStyle {
                             i++
                         }
                     }
+
                     else -> {
-                        // 🌟 FIX 2: Append the replacement as a full String, not a single Char!
+                        // Swap character using the cached map
                         val replacement = selectedFontMap[char.lowercaseChar()]
                         if (replacement != null) {
-                            result.append(replacement) // Appends the String ("𝟬")
+                            result.append(replacement)
                         } else {
                             result.append(char)
                         }
@@ -273,5 +271,44 @@ object FontStyle {
             index++
         }
         return result
+    }
+
+    private fun getFontMapCached(viewer: Player?): Map<Char, String>? {
+        val fontMaps = FontRegistry.getFonts
+        if (fontMaps.isEmpty()) return null
+
+        val versionStr = viewer?.let { VersionHandler.getClientVersion(it) }
+            ?: VersionHandler.getNativeServerVersion()
+
+        return fontCache.getOrPut(versionStr) {
+            val targetVersion = VersionHandler.parseVersion(versionStr)
+
+            // Sort the versions to find the best match
+            val bestVersionKey = fontMaps.keys.sortedWith { v1, v2 ->
+                VersionHandler.compareVersions(
+                    VersionHandler.parseVersion(v2),
+                    VersionHandler.parseVersion(v1)
+                )
+            }.firstOrNull { versionKey ->
+                VersionHandler.compareVersions(targetVersion, VersionHandler.parseVersion(versionKey)) >= 0
+            }
+
+            if (bestVersionKey == null) {
+                null
+            } else {
+                val rawMap = fontMaps[bestVersionKey]
+                val safeCharMap = mutableMapOf<Char, String>()
+
+                // 🌟 BULLETPROOF MAPPING:
+                // Converts the key to a String and grabs the 1st char.
+                // Works 100% of the time, no matter what FontRegistry returns!
+                rawMap?.forEach { (key, value) ->
+                    val charKey = key.toString()[0]
+                    safeCharMap[charKey] = value
+                }
+
+                safeCharMap // Save this into the cache
+            }
+        }
     }
 }

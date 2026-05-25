@@ -3,15 +3,20 @@ package net.justlime.limeframegui.config
 import net.justlime.limeframegui.models.registry.GuiSound
 
 data class FrameConfigKeys(
+    //MAIN
     var main: String = "main",
+    var inventoryTitle: String = "title",
+    var inventoryRows: String = "rows",
     var pattern: String = "main.pattern",
     var openRequirements: String = "requirement.condition",
     var denyActions: String = "requirement.on-deny",
-    var inventoryTitle: String = "title",
-    var inventoryRows: String = "rows",
     var inventoryItemSection: String = "items",
     var defaultInventoryTitle: String = "LimeFrame Inventory",
     var defaultInventoryRows: Int = 6,
+
+    //ITEMS
+    var viewRequirements: String = "view-requirement",
+    var priority: String = "priority",
     var material: String = "material",
     var name: String = "name",
     var lore: String = "lore",
@@ -36,6 +41,7 @@ data class FrameConfigKeys(
     var textCase: String = "case",
     var textWrapLength: String = "wrap-length",
 
+    // Stylish Settings
     var stylishTitle: Boolean = false,
     var stylishName: Boolean = false,
     var stylishLore: Boolean = false,
@@ -58,6 +64,7 @@ data class FrameConfigKeys(
      **/
     var stylishCloseSound: String = "close-sound",
 
+    // Anvil Gui
     var anvilTitle: String = "title",
     var anvilLabel: String = "label",
     var anvilLeftItem: String = "left-item",
@@ -71,5 +78,13 @@ data class FrameConfigKeys(
 
     var clickSound: GuiSound = GuiSound(),
     var openSound: GuiSound = GuiSound(),
-    var closeSound: GuiSound = GuiSound()
+    var closeSound: GuiSound = GuiSound(),
+
+    // Scoped Context Keys
+    var localVariables: String = "variables",
+    var localPlaceholders: String = "placeholders",
+
+    //states
+    var states: String = "states",
+    var stateId: String = "state-id"
 )

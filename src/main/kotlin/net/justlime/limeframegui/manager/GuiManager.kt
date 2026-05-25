@@ -1,15 +1,21 @@
 package net.justlime.limeframegui.manager
 
+import net.justlime.limeframegui.builder.AnvilGuiBuilder
+import net.justlime.limeframegui.context.IContextSetting
 import net.justlime.limeframegui.engine.ActionEngine
 import net.justlime.limeframegui.engine.ConditionEngine
+import net.justlime.limeframegui.engine.TextResolver
+import net.justlime.limeframegui.event.AnvilEventImpl
 import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.models.GuiPageTemplate
-import net.justlime.limeframegui.registry.component.LangRegistry
-import net.justlime.limeframegui.registry.component.PlaceholderRegistry
+import net.justlime.limeframegui.models.registry.ActionBehavior
+import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
 import net.justlime.limeframegui.registry.gui.ListPopulatorRegistry
 import net.justlime.limeframegui.registry.gui.PageRegistry
+import net.justlime.limeframegui.registry.input.InputRegistry
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import java.util.UUID
 
 /**
  * The central rendering engine for the GUI framework.
@@ -19,33 +25,75 @@ import org.bukkit.entity.Player
  */
 object GuiManager {
 
+    private val playerHistory = mutableMapOf<UUID, ArrayDeque<String>>()
+    private val currentGui = mutableMapOf<UUID, String>()
+
     /**
-     * Constructs and opens a GUI page for the specified player.
-     *
+     * Opens an Anvil Input GUI.
      * @param player The player opening the GUI.
-     * @param guiId The registered ID/namespace of the page to open.
-     * @return True if the page was successfully found and opened, false otherwise.
+     * @param inputId The YAML file ID from the gui/inputs/ folder.
+     * @param commandRaw The raw payload from the Action tag (e.g., "team {input}").
+     * @param context The Context (IContextSetting) of the parent Chest GUI they clicked from.
      */
-    fun open(player: Player, guiId: String): Boolean {
+    fun openInput(player: Player, inputId: String, commandRaw: String, context: IContextSetting): Boolean {
+        val setting = InputRegistry.get(inputId)?.clone() ?: run {
+            println("[LimeFrameGUI] Error: Attempted to open unknown input '$inputId'")
+            return false
+        }
+
+        setting.localVariables = context.localVariables + setting.localVariables
+        setting.localPlaceholders = context.localPlaceholders + setting.localPlaceholders
+
+        val resolvedReqs = TextResolver.resolveList(player, setting.openRequirements, setting)
+        if (!ConditionEngine.checkRequirements(player, resolvedReqs)) {
+            val response = ActionTagRegistryResponse(player, commandRaw, null, setting)
+            ActionEngine.executeBehavior(response, setting.denyBehavior)
+            return false
+        }
+
+        val builder = AnvilGuiBuilder(setting)
+
+        builder.onConfirmClick { state, userInput ->
+            val finalCommand = commandRaw.replace("{input}", userInput)
+            val response = ActionTagRegistryResponse(player, finalCommand, null, context)
+            val behavior = ActionBehavior.Simple(listOf(finalCommand))
+            ActionEngine.executeBehavior(response, behavior)
+        }
+
+        builder.onClose { closedPlayer ->
+            back(closedPlayer)
+        }
+
+        AnvilEventImpl(player, setting, builder).open()
+        return true
+    }
+
+    fun open(player: Player, guiId: String,recordHistory: Boolean = true): Boolean {
         val template: GuiPageTemplate = PageRegistry.get(guiId) ?: run {
             println("[LimeFrameGUI] Error: Attempted to open unknown page '$guiId'")
             return false
         }
 
-        // Check requirements
-        val requirements = PlaceholderRegistry.resolve(template.setting.openRequirements)
-        if (!ConditionEngine.checkRequirements(player, requirements)) {
-            ActionEngine.executeBehavior(player, template.setting.denyBehavior, null)
+        val resolvedReqs = TextResolver.resolveList(player, template.setting.openRequirements, template.setting)
+        if (!ConditionEngine.checkRequirements(player, resolvedReqs)) {
+            val response = ActionTagRegistryResponse(player, "", null, template.setting)
+            ActionEngine.executeBehavior(response, template.setting.denyBehavior)
             return false
         }
 
-        val locale = player.locale
-        val resolvedTitle = LangRegistry.resolveLangString(template.setting.title, locale)
+        if (recordHistory) {
+            val currentlyOpen = currentGui[player.uniqueId]
+            if (currentlyOpen != null && currentlyOpen != guiId) {
+                playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
+            }
+        }
+
+        val resolvedTitle = TextResolver.resolve(player, template.setting.title, template.setting)
         val localizedSetting = template.setting.copy(title = resolvedTitle)
+
         ChestGUI(localizedSetting) {
             onClick { it.isCancelled = true }
 
-            // Resolve Permission-Based Layout
             val activeItems = template.permissionItems.entries
                 .firstOrNull { (perm, _) -> perm == "default" || player.hasPermission(perm) }
                 ?.value ?: template.permissionItems["default"] ?: emptyList()
@@ -53,7 +101,6 @@ object GuiManager {
             val nextBtn = activeItems.find { it.style.action == "core_next_page" }
             val prevBtn = activeItems.find { it.style.action == "core_prev_page" }
 
-            // Configure Dynamic List Navigation
             template.dynamicMask?.let { mask ->
                 nav {
                     nextBtn?.let {
@@ -64,7 +111,6 @@ object GuiManager {
                         prevSlot = it.slot ?: 0
                         prevItem = it.clone().apply { style.viewer = player }
                     }
-
                     buffer {
                         renderLimit = mask.buffer.renderLimit
                         margin = mask.buffer.margin
@@ -73,39 +119,62 @@ object GuiManager {
                 }
             }
 
-            // Render Static Layout & Semantic Items
             activeItems.forEach { templateItem ->
-                val action = templateItem.style.action
-                if (action == "core_next_page" || action == "core_prev_page") return@forEach
-                if (templateItem.material == Material.AIR) return@forEach
+                if (templateItem.style.action == "core_next_page" || templateItem.style.action == "core_prev_page") return@forEach
+                if (templateItem.baseItem.type == Material.AIR) return@forEach
 
-                val playerItem = templateItem.clone()
-                playerItem.style.viewer = player
+                if (templateItem.stateId != null && templateItem.states.isNotEmpty()) {
+                    templateItem.states.forEach { (stateKey, stateOverride) ->
+                        val stateItem = stateOverride.clone()
+                        stateItem.slot = templateItem.slot
+                        stateItem.style.action = templateItem.style.action
+                        stateItem.style.viewer = player
 
-                playerItem.name = LangRegistry.resolveLangString(playerItem.name, locale)
-                playerItem.lore = playerItem.lore.map { LangRegistry.resolveLangString(it, locale) }
+                        val condition = "[condition] '{var:${templateItem.stateId}}' == '$stateKey'"
+                        val mergedReqs = stateItem.viewRequirements.toMutableList()
+                        mergedReqs.add(condition)
+                        stateItem.viewRequirements = mergedReqs
 
-                setItem(playerItem) { event ->
-                    playerItem.onClick(event)
+                        if (stateItem.updateInterval == null) {
+                            stateItem.updateInterval = templateItem.updateInterval
+                        }
+
+                        setItem(stateItem) { event -> stateItem.onClick(event) }
+                    }
+                } else {
+                    // Normal Static Item
+                    val playerItem = templateItem.clone()
+                    playerItem.style.viewer = player
+                    setItem(playerItem) { event -> playerItem.onClick(event) }
                 }
             }
 
-            // Populate and Render Dynamic Elements
             template.dynamicMask?.let { mask ->
-                // Fetch context-aware items (e.g., list of online players, allies, etc.)
                 val populatedItems = ListPopulatorRegistry.getItems(mask.populatorId, player, mask)
-
-                // Hand over to ChestGUI's pagination engine
                 addPage {
                     populatedItems.forEach { item ->
-                        addItem(item) { event ->
-                            item.onClick(event)
-                        }
+                        addItem(item) { event -> item.onClick(event) }
                     }
                 }
             }
-
         }.open(player)
         return true
+    }
+
+    /**
+     * Navigates the player back to their previous GUI.
+     */
+    fun back(player: Player): Boolean {
+        val history = playerHistory[player.uniqueId] ?: return false
+        val previousGuiId = history.removeLastOrNull() ?: return false
+        return open(player, previousGuiId, recordHistory = false)
+    }
+
+    /**
+     * Clears a player's history (Call this on PlayerQuitEvent or when they close the menu entirely)
+     */
+    fun clearHistory(player: Player) {
+        playerHistory.remove(player.uniqueId)
+        currentGui.remove(player.uniqueId)
     }
 }

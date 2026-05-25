@@ -1,6 +1,7 @@
 package net.justlime.limeframegui.util
 
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.session.ItemRenderer
 import org.bukkit.event.inventory.InventoryClickEvent
@@ -87,8 +88,13 @@ fun ItemStack.toGuiItem(): GuiItem {
     }
 
     return GuiItem(
-        material = type, name = displayName, amount = amount, lore = lore.toMutableList(), glow = glow, flags = flags, customModelData = customModelData, texture = skullTexture, enchantments = enchantments, unbreakable = unbreakable, damage = damage
+        baseItem = this.clone(),
+        name = displayName,
+        lore = lore,
+        texture = skullTexture,
+        style = GuiStyleSheet()
     )
+
 }
 
 /**
@@ -99,7 +105,7 @@ fun ItemStack.toGuiItem(): GuiItem {
  */
 fun Inventory.addItem(item: GuiItem?): HashMap<Int, ItemStack> {
     if (item == null) return hashMapOf()
-    val remaining = this.addItem(item.toItemStack()) // returns Map<Int, ItemStack>
+    val remaining = this.addItem(item.baseItem) // returns Map<Int, ItemStack>
     return remaining.ifEmpty { hashMapOf() }
 }
 
@@ -112,7 +118,7 @@ fun Inventory.addItem(item: GuiItem?): HashMap<Int, ItemStack> {
 fun Inventory.addItems(item: List<GuiItem>): List<HashMap<Int, ItemStack>> {
     val remainingItems = mutableListOf<HashMap<Int, ItemStack>>()
     item.forEach { guiItem ->
-        val remaining = this.addItem(guiItem.toItemStack())
+        val remaining = this.addItem(guiItem.baseItem)
         if (remaining.isNotEmpty()) {
             remainingItems.add(remaining)
         }
@@ -132,7 +138,7 @@ fun Inventory.setItem(index: Int, item: GuiItem?): Boolean {
         this.setItem(index, null)
         return true
     }
-    val stack = item.toItemStack()
+    val stack = item.baseItem
 
     if (index in 0 until this.size) {
         this.setItem(index, stack)
@@ -196,7 +202,7 @@ fun Inventory.remove(slot: List<Int>): List<Int> {
  * @return True if the item was successfully removed, false otherwise.
  */
 fun Inventory.remove(item: GuiItem): Boolean {
-    val stackToRemove = item.toItemStack()
+    val stackToRemove = item.baseItem
     val result = this.removeItem(stackToRemove)
     return result.isEmpty() // If nothing is left, it means removal was successful
 
@@ -232,9 +238,9 @@ var InventoryClickEvent.item: GuiItem?
  * Updates the item in the inventory at the clicked slot with the current state of the `item` property
  * of this [InventoryClickEvent].
  */
-fun InventoryClickEvent.update() {
+fun InventoryClickEvent.update(setting: GuiSetting) {
     val guiItem = this.item ?: return
-    val itemStack = ItemRenderer.render(guiItem, guiItem.style)
+    val itemStack = ItemRenderer.render(guiItem, guiItem.style,setting)
     this.inventory.setItem(this.slot, itemStack)
 }
 
@@ -242,9 +248,9 @@ fun InventoryClickEvent.update() {
  * Updates the item in the inventory at the clicked slot with the current state of the `item` property
  * of this [InventoryClickEvent], applying the provided [GuiStyleSheet] for rendering.
  */
-fun InventoryClickEvent.update(style: GuiStyleSheet) {
+fun InventoryClickEvent.update(style: GuiStyleSheet,setting: GuiSetting) {
     val guiItem = (this.item ?: return)
     guiItem.style.placeholder = this.item?.style?.placeholder ?: mutableMapOf()
-    val itemStack = ItemRenderer.render(guiItem, style)
+    val itemStack = ItemRenderer.render(guiItem, style,setting)
     this.inventory.setItem(this.slot, itemStack)
 }

@@ -2,15 +2,18 @@ package net.justlime.limeframegui.config
 
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.models.*
-import net.justlime.limeframegui.registry.gui.TemplateCompiler
+import net.justlime.limeframegui.registry.common.TemplateCompiler
+import net.justlime.limeframegui.registry.component.ActionRegistry
 import net.justlime.limeframegui.util.FrameConverter
 import net.justlime.limeframegui.util.toGuiItem
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.enchantments.Enchantment
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.Damageable
 
 /**
  * The serialization and parsing engine for structural data types.
@@ -27,23 +30,76 @@ object GuiConfigHandler {
      * custom configured mapping keys.
      */
     fun loadItem(section: ConfigurationSection): GuiItem {
-        val soundAlias =
-            section.getString(keys.stylishItemSound) ?: section.getStringList(keys.stylishItemSound).firstOrNull()
-        val parsedAction = section.getString(keys.action)
+        // 1. Resolve Audio and Action Metadata
+        val soundAlias = section.getString(keys.stylishItemSound)
+            ?: section.getStringList(keys.stylishItemSound).firstOrNull()
+        val parsedAction = section.getString(keys.action) ?: ActionRegistry.registerInline(section)
+
+        // 2. Construct the Base Visual ItemStack
+        val material = Material.getMaterial(section.getString(keys.material) ?: "AIR") ?: Material.AIR
+        val amount = section.getInt(keys.amount, 1)
+        val baseItem = ItemStack(material, amount)
+
+        val meta = baseItem.itemMeta
+        if (meta != null) {
+            if (section.getBoolean(keys.unbreakable, false)) {
+                meta.isUnbreakable = true
+            }
+
+            if (section.contains(keys.damage) && meta is Damageable) {
+                meta.damage = section.getInt(keys.damage)
+            }
+
+            if (section.contains(keys.model)) {
+                meta.setCustomModelData(section.getInt(keys.model))
+            }
+
+            val flags = section.getStringList(keys.flags).mapNotNull { runCatching { ItemFlag.valueOf(it) }.getOrNull() }
+            if (flags.isNotEmpty()) {
+                meta.addItemFlags(*flags.toTypedArray())
+            }
+
+            if (section.getBoolean(keys.glow, false)) {
+                try {
+                    meta.setEnchantmentGlintOverride(true) // 1.20.4+ Native Glow
+                } catch (_: NoSuchMethodError) {
+                    // Legacy Fallback
+                    val dummyEnchant = Enchantment.getByName("UNBREAKING") ?: Enchantment.getByName("DURABILITY")
+                    if (dummyEnchant != null) {
+                        meta.addEnchant(dummyEnchant, 1, true)
+                        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS)
+                    }
+                }
+            }
+            baseItem.itemMeta = meta
+        }
+
+        // 3. Parse Data-Driven Session States (Recursive)
+        val stateId = section.getString(keys.stateId)
+        val states = mutableMapOf<String, GuiItem>()
+        val statesSec = section.getConfigurationSection(keys.states)
+        if (statesSec != null) {
+            for (stateKey in statesSec.getKeys(false)) {
+                val stateSection = statesSec.getConfigurationSection(stateKey)
+                if (stateSection != null) {
+                    states[stateKey.uppercase()] = loadItem(stateSection)
+                }
+            }
+        }
+
+        // 4. Assemble the Blueprint
         return GuiItem(
-            material = Material.getMaterial(section.getString(keys.material) ?: "AIR") ?: Material.AIR,
+            baseItem = baseItem,
             name = section.getString(keys.name) ?: "",
             lore = section.getStringList(keys.lore),
-            updateInterval = section.getString(keys.updateInterval)?.toIntOrNull(),
-            glow = section.getBoolean(keys.glow, false),
-            flags = section.getStringList(keys.flags).mapNotNull { runCatching { ItemFlag.valueOf(it) }.getOrNull() },
-            customModelData = section.takeIf { it.contains(keys.model) }?.getInt(keys.model),
-            amount = section.getInt(keys.amount, 1),
-            texture = section.getString(keys.texture),
+            viewRequirements = section.getStringList(keys.viewRequirements),
+            priority = section.getInt(keys.priority, 0),
             slot = section.getString(keys.slot)?.toIntOrNull(),
             slotList = section.getIntegerList(keys.slotList),
-            unbreakable = section.getBoolean(keys.unbreakable, false),
-            damage = section.takeIf { it.contains(keys.damage) }?.getInt(keys.damage),
+            updateInterval = section.getString(keys.updateInterval)?.toIntOrNull(),
+            texture = section.getString(keys.texture),
+            stateId = stateId,
+            states = states,
             style = GuiStyleSheet(
                 textSettings = GuiTextSettings(
                     name = section.getConfigurationSection(keys.textSection)?.let { textSec ->
@@ -59,13 +115,9 @@ object GuiConfigHandler {
                 ),
                 clickSoundAlias = soundAlias,
                 action = parsedAction
-            ),
-            viewRequirements = section.getStringList("view-requirement"),
-            priority = section.getInt("priority", 0),
-
+            )
         )
     }
-
     /**
      * Loops through a parent configuration block to parse multiple items simultaneously.
      */
@@ -110,7 +162,8 @@ object GuiConfigHandler {
             val slot = key.toIntOrNull() ?: continue
             itemsSection.getConfigurationSection(key)?.let { itemSection ->
                 val item = loadItem(itemSection)
-                inventory.setItem(slot, item.toItemStack())
+                // Just use the base visual item for a static inventory load
+                inventory.setItem(slot, item.baseItem.clone())
             }
         }
         return inventory
@@ -120,38 +173,36 @@ object GuiConfigHandler {
      * Formats settings required to build context-aware, text-input Anvil UI panels.
      */
     fun loadAnvilSetting(section: ConfigurationSection?): AnvilGuiSetting {
+        val keys = LimeFrameAPI.keys
         if (section == null) return AnvilGuiSetting(
             title = keys.defaultAnvilTitle,
             label = keys.defaultAnvilLabel,
-            leftItem = GuiItem(Material.AIR),
-            rightItem = GuiItem(Material.AIR),
-            outPutItem = GuiItem(Material.AIR),
+            leftItem = GuiItem(),
+            rightItem = GuiItem(),
+            outPutItem = GuiItem(),
             style = GuiStyleSheet()
         )
 
-        val leftItem =
-            section.getConfigurationSection(keys.anvilLeftItem)?.let { loadItem(it) } ?: GuiItem(Material.AIR)
-        val rightItem =
-            section.getConfigurationSection(keys.anvilRightItem)?.let { loadItem(it) } ?: GuiItem(Material.AIR)
-        val outputItem =
-            section.getConfigurationSection(keys.anvilOutputItem)?.let { loadItem(it) } ?: GuiItem(Material.AIR)
+        val leftItem = section.getConfigurationSection(keys.anvilLeftItem)?.let { loadItem(it) } ?: GuiItem()
+        val rightItem = section.getConfigurationSection(keys.anvilRightItem)?.let { loadItem(it) } ?: GuiItem()
+        val outputItem = section.getConfigurationSection(keys.anvilOutputItem)?.let { loadItem(it) } ?: GuiItem()
+
+        val mainSec = section.getConfigurationSection(keys.main)
 
         return AnvilGuiSetting(
-            title = section.getString(keys.anvilTitle, keys.defaultAnvilTitle) ?: keys.defaultAnvilTitle,
-            label = section.getString(keys.anvilLabel, keys.defaultAnvilLabel) ?: keys.defaultAnvilLabel,
-            preventClose = section.getBoolean(keys.anvilPreventClose, false),
+            title = mainSec?.getString(keys.anvilTitle, keys.defaultAnvilTitle) ?: keys.defaultAnvilTitle,
+            label = mainSec?.getString(keys.anvilLabel, keys.defaultAnvilLabel) ?: keys.defaultAnvilLabel,
+            preventClose = mainSec?.getBoolean(keys.anvilPreventClose, false) ?: false,
             leftItem = leftItem,
             rightItem = rightItem,
             outPutItem = outputItem,
-            openSoundAlias = section.getString(keys.stylishOpenSound) ?: section.getStringList(keys.stylishOpenSound)
-                .firstOrNull(),
-            cancelSoundAlias = section.getString(keys.anvilCancelSound) ?: section.getStringList(keys.anvilCancelSound)
-                .firstOrNull(),
-            submitSoundAlias = section.getString(keys.anvilSubmitSound) ?: section.getStringList(keys.anvilSubmitSound)
-                .firstOrNull(),
-            style = GuiStyleSheet(
-                textSettings = guiTextSettings(section)
-            )
+
+            // Sounds are typically at the root or main depending on your config, this checks the root!
+            openSoundAlias = section.getString(keys.stylishOpenSound) ?: section.getStringList(keys.stylishOpenSound).firstOrNull(),
+            cancelSoundAlias = section.getString(keys.anvilCancelSound) ?: section.getStringList(keys.anvilCancelSound).firstOrNull(),
+            submitSoundAlias = section.getString(keys.anvilSubmitSound) ?: section.getStringList(keys.anvilSubmitSound).firstOrNull(),
+
+            style = GuiStyleSheet() // TemplateCompiler will handle textSettings
         )
     }
 
@@ -189,27 +240,62 @@ object GuiConfigHandler {
      * Serializes a runtime [GuiItem] object into structured text keys inside a file configuration sector.
      */
     fun writeItemToSection(section: ConfigurationSection, item: GuiItem) {
-        section.set(keys.name, item.name)
-        section.set(keys.material, item.material.name)
-        section.set(keys.lore, item.lore)
-        section.set(keys.updateInterval, item.updateInterval)
-        section.set(keys.glow, item.glow)
-        section.set(keys.flags, item.flags.map { it.name })
-        section.set(keys.model, item.customModelData)
-        section.set(keys.texture, item.texture)
-        section.set(keys.amount, item.amount)
-        section.set(keys.unbreakable, item.unbreakable)
-        section.set(keys.damage, item.damage)
-        val textSec = section.createSection(keys.textSection)
+        val base = item.baseItem
+        val meta = base.itemMeta
 
-        writeRule(textSec,"name", item.style.textSettings.name)
-        writeRule(textSec, "lore", item.style.textSettings.lore)
+        // 1. Write the Raw Text Templates
+        if (item.name.isNotEmpty()) section.set(keys.name, item.name)
+        if (item.lore.isNotEmpty()) section.set(keys.lore, item.lore)
+
+        // 2. Write the Visual ItemStack Properties
+        section.set(keys.material, base.type.name)
+        section.set(keys.amount, base.amount)
+
+        if (meta != null) {
+            if (meta.hasItemFlag(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS)) {
+                section.set(keys.glow, true)
+            } else if (meta.hasEnchants()) {
+                // Support for the modern API if you use it instead of HIDE_ENCHANTS
+                try {
+                    if (meta.hasEnchantmentGlintOverride()) {
+                        section.set(keys.glow, meta.enchantmentGlintOverride)
+                    }
+                } catch (_: NoSuchMethodError) {}
+            }
+
+            if (meta.itemFlags.isNotEmpty()) {
+                section.set(keys.flags, meta.itemFlags.map { it.name })
+            }
+
+            if (meta.hasCustomModelData()) {
+                section.set(keys.model, meta.customModelData)
+            }
+
+            if (meta.isUnbreakable) {
+                section.set(keys.unbreakable, true)
+            }
+
+            if (meta is Damageable && meta.hasDamage()) {
+                section.set(keys.damage, meta.damage)
+            }
+        }
+
+        // 3. Write LimeFrame Properties
+        if (item.texture != null) section.set(keys.texture, item.texture)
+        if (item.updateInterval != null) section.set(keys.updateInterval, item.updateInterval)
+
         item.slot?.let { section.set(keys.slot, it) }
         if (item.slotList.isNotEmpty()) section.set(keys.slotList, item.slotList)
+
+        if (item.viewRequirements.isNotEmpty()) section.set(LimeFrameAPI.keys.viewRequirements, item.viewRequirements)
+        if (item.priority != 0) section.set("priority", item.priority)
+
+        // 4. Write Stylish Settings
         item.style.clickSoundAlias?.let { section.set(keys.stylishItemSound, it) }
 
-        if (item.viewRequirements.isNotEmpty()) section.set("view-requirement", item.viewRequirements)
-        if (item.priority != 0) section.set("priority", item.priority)
+        val textSec = section.createSection(keys.textSection)
+        writeRule(textSec, "name", item.style.textSettings.name)
+        writeRule(textSec, "lore", item.style.textSettings.lore)
     }
 
 

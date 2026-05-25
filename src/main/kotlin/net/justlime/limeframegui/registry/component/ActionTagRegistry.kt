@@ -1,4 +1,4 @@
-package net.justlime.limeframegui.registry
+package net.justlime.limeframegui.registry.component
 
 import net.justlime.limeframegui.engine.ActionTagHandler
 

@@ -14,5 +14,3 @@ sealed class GuiActionPack {
         val fallback: Standard? = null // The 'else' block
     ) : GuiActionPack()
 }
-
-// What actually happens when an action is triggered (A List or a Switch-Case)

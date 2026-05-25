@@ -1,36 +1,57 @@
 package net.justlime.limeframegui.session
 
+import net.justlime.limeframegui.color.FontStyle
+import net.justlime.limeframegui.context.IContextSetting
+import net.justlime.limeframegui.engine.TextResolver
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiStyleSheet
+import net.justlime.limeframegui.util.SkullUtils
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.SkullMeta
 
 /**
- * Responsible for converting a blueprint "GuiItem" into a Bukkit "ItemStack".
- * It injects the context (Player/PAPI) at the last possible moment.
+ * Compiles a GuiItem blueprint into a renderable Bukkit ItemStack.
+ * Executes the text resolution and styling pipeline against an isolated session context.
  */
 object ItemRenderer {
 
-    fun render(item: GuiItem, sessionContext: GuiStyleSheet): ItemStack {
-        val tempItem = item.clone()
+    fun render(item: GuiItem, sessionContext: GuiStyleSheet, setting: IContextSetting): ItemStack {
+        val resultStack = item.baseItem.clone()
+        val meta = resultStack.itemMeta ?: return resultStack
 
-        // Start with the Session Context (Player, Global PAPI)
-        val finalContext = sessionContext.copy(
-            placeholder = sessionContext.placeholder.toMutableMap(),
-            textSettings = sessionContext.textSettings.clone()
-        )
-        // Merge Item-Specific Placeholders into the Session Context
-        item.style.let { itemContext ->
-            val mergedPlaceholders = finalContext.placeholder.toMutableMap()
-            mergedPlaceholders.putAll(itemContext.placeholder)
-            finalContext.placeholder = mergedPlaceholders
+        val finalContext = mergeContexts(sessionContext, item.style)
+        val viewer = finalContext.viewer ?: return resultStack
 
-            // Merge other overrides if needed
-            if (itemContext.offlinePlayer != null) finalContext.offlinePlayer = itemContext.offlinePlayer
+        val rawName = item.currentName
+        if (rawName.isNotEmpty()) {
+            val resolvedName = TextResolver.resolve(viewer, rawName, setting)
+            meta.setDisplayName(FontStyle.applyStyle(resolvedName, finalContext, finalContext.textSettings.name))
         }
 
-        // Apply the combined context
-        tempItem.style = finalContext
+        val rawLore = item.currentLore
+        if (rawLore.isNotEmpty()) {
+            val resolvedLore = TextResolver.resolveList(viewer, rawLore, setting)
+            meta.lore = FontStyle.applyStyle(resolvedLore, finalContext, finalContext.textSettings.lore)
+        }
 
-        return tempItem.toItemStack()
+        if (meta is SkullMeta && !item.texture.isNullOrEmpty()) {
+            SkullUtils.applyDynamicTexture(meta, item.texture!!, finalContext)
+        }
+
+        resultStack.itemMeta = meta
+        return resultStack
+    }
+
+    /**
+     * Isolates state by deriving a new style sheet.
+     * Item-level properties strictly override session-level defaults.
+     */
+    private fun mergeContexts(base: GuiStyleSheet, override: GuiStyleSheet): GuiStyleSheet {
+        return base.copy(
+            placeholder = (base.placeholder + override.placeholder).toMutableMap(),
+            textSettings = base.textSettings.clone(),
+            offlinePlayer = override.offlinePlayer ?: base.offlinePlayer,
+            viewer = override.viewer ?: base.viewer
+        )
     }
 }

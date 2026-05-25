@@ -28,7 +28,7 @@ import org.bukkit.inventory.Inventory
  */
 class ChestGUIBuilder(val session: GuiSession, originalSetting: GuiSetting) {
 
-    private val setting: GuiSetting = originalSetting.clone()
+    val setting: GuiSetting = originalSetting.clone()
     var buffer: GuiBuffer? = null
 
     /**Pages are temporarily stored here before being moved to the handler.*/

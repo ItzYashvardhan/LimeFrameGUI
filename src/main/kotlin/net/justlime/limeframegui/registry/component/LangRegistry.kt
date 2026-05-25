@@ -1,6 +1,7 @@
 package net.justlime.limeframegui.registry.component
 
 import org.bukkit.configuration.ConfigurationSection
+import org.bukkit.entity.Player
 
 object LangRegistry : IRegistry {
     private val rawMessages = mutableMapOf<String, MutableMap<String, String>>()
@@ -93,13 +94,11 @@ object LangRegistry : IRegistry {
         val currentRawLists = rawLists[safeLocale]!!
 
         for (key in currentRawMessages.keys) {
-            // 🌟 FIX 1: Apply global placeholders to compiled lang strings at load-time!
             val internallyResolved = resolveString(currentRawMessages[key]!!, safeLocale, mutableSetOf(key))
             compiledMessages[safeLocale]!![key] = PlaceholderRegistry.resolve(internallyResolved)
         }
 
         for (key in currentRawLists.keys) {
-            // 🌟 FIX 2: Apply global placeholders to compiled lang lists at load-time!
             val internallyResolved = resolveList(currentRawLists[key]!!, safeLocale, mutableSetOf(key))
             compiledLists[safeLocale]!![key] = PlaceholderRegistry.resolve(internallyResolved)
         }
@@ -126,7 +125,7 @@ object LangRegistry : IRegistry {
      * Parses GUI configuration strings dynamically, resolving `{lang:key|args}` syntax
      * into compiled localized text at runtime.
      */
-    fun resolveLangString(text: String, locale: String): String {
+    fun resolveLangString(player: Player,text: String, locale: String): String {
         // Direct Lang Mapping (e.g. `name: "lang.dialog_title"`)
         if (text.startsWith("lang.") || text.startsWith("lang:")) {
             val stripped = text.substring(5)
@@ -152,7 +151,7 @@ object LangRegistry : IRegistry {
         }
 
         // This ensures `name: "{cmd.team} GUI"` gets resolved perfectly.
-        return PlaceholderRegistry.resolve(resolvedText)
+        return PlaceholderRegistry.resolve(resolvedText,player=player)
     }
 
     /**

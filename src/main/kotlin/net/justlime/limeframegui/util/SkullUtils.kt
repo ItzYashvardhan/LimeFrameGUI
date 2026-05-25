@@ -5,6 +5,9 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
+import net.justlime.limeframegui.integration.SkinRestorerHook
+import net.justlime.limeframegui.models.GuiStyleSheet
+import net.justlime.limeframegui.registry.component.TextureRegistry
 import org.bukkit.Bukkit
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.SkullMeta
@@ -13,8 +16,83 @@ import java.net.URL
 import java.util.*
 import java.util.regex.Matcher
 import java.util.regex.Pattern
+import kotlin.text.endsWith
+import kotlin.text.equals
+import kotlin.text.startsWith
+import kotlin.text.substring
 
 object SkullUtils {
+
+    /**
+     * Applies texture logic specifically for SkullMeta.
+     * Handles Base64, {player} placeholders, and [uuid] fallbacks.
+     */
+    fun applyDynamicTexture(meta: SkullMeta, texture: String, style: GuiStyleSheet) {
+        val rawTex = texture ?: return
+
+        val tex = TextureRegistry.get(rawTex.removePrefix("texture.")) ?: rawTex
+        when {
+            // Case A: {player} placeholder
+            tex.equals("{player}", ignoreCase = true) -> {
+                style.offlinePlayer?.let { p ->
+                    if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = p.playerProfile
+                    else meta.owningPlayer = p
+                }
+            }
+
+            // Case B: UUID string "[uuid]"
+            tex.startsWith("[") && tex.endsWith("]") -> {
+                try {
+                    val uuidString = tex.substring(1, tex.length - 1)
+                    val uuid = UUID.fromString(uuidString)
+
+                    // 1. Try Online Player
+                    val onlinePlayer = Bukkit.getPlayer(uuid)
+                    if (onlinePlayer != null) {
+                        if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = onlinePlayer.playerProfile
+                        else meta.owningPlayer = onlinePlayer
+                        return
+                    }
+
+                    // 2. Try SkinRestorer (Local Files / Cracked Support)
+                    val fileTexture = SkinRestorerHook.getSkin(uuid)
+                    if (fileTexture != null) {
+                        SkullUtils.applySkin(meta, SkullProfileCache.getProfile(fileTexture))
+                        return
+                    }
+
+
+                    // 3. Try Mojang API [Currently In Progress]
+                    if (false && uuid.version() == 4) {
+                        var textureVal = TextureCache.get(uuid)
+
+                        if (textureVal == null) {
+//                            textureVal = MojangTextureFetcher.fetch(uuid)     Todo Required Premium Acc to validate it
+                        }
+
+                        if (textureVal != null) {
+                            TextureCache.add(uuid, textureVal)
+                            SkullUtils.applySkin(meta, SkullProfileCache.getProfile(textureVal))
+                            return
+                        }
+                    }
+
+                    // 4. Fallback (Default Bukkit behavior)
+                    val owner = Bukkit.getOfflinePlayer(uuid)
+                    if (SkullUtils.VersionHelper.HAS_PLAYER_PROFILES) meta.ownerProfile = owner.playerProfile
+                    else meta.owningPlayer = owner
+
+                } catch (_: Exception) { /* Ignore malformed UUID */
+                }
+            }
+
+            // Case C: Base64 Texture
+            else -> {
+                SkullUtils.applySkin(meta, SkullProfileCache.getProfile(tex))
+            }
+        }
+    }
+
     /**
      * Applies a pre-created profile object to a SkullMeta.
      *

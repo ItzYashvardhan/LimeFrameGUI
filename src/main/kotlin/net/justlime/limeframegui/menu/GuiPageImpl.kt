@@ -1,12 +1,15 @@
 package net.justlime.limeframegui.menu
 
 import net.justlime.limeframegui.builder.ChestGUIBuilder
+import net.justlime.limeframegui.context.IContextSetting
 import net.justlime.limeframegui.engine.ConditionEngine
+import net.justlime.limeframegui.engine.TextResolver
 import net.justlime.limeframegui.event.GuiClick
 import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiSetting
 import net.justlime.limeframegui.models.GuiStyleSheet
+import net.justlime.limeframegui.session.ItemRenderer
 import net.justlime.limeframegui.util.item
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.InventoryClickEvent
@@ -48,7 +51,7 @@ class GuiPageImpl(
             if (freeSlot != -1) {
                 newItem.slot = freeSlot
                 itemCache.add(newItem)
-                registerClickEvent(newItem, freeSlot, onClick)
+                registerClickEvent(newItem, freeSlot, onClick,setting)
             }
             return freeSlot
         }
@@ -61,7 +64,7 @@ class GuiPageImpl(
             newItem.slot = nextFreeSlot
             currentImpl.itemCache.add(newItem)
             currentImpl.trackAddItemSlot[nextFreeSlot] = newItem to onClick
-            currentImpl.registerClickEvent(newItem, nextFreeSlot, onClick)
+            currentImpl.registerClickEvent(newItem, nextFreeSlot, onClick,setting)
             return nextFreeSlot
         }
 
@@ -94,10 +97,12 @@ class GuiPageImpl(
         val newItem = item.clone().apply { slot = index }
         if (index < inventory.size) {
             itemCache.add(newItem)
-            registerClickEvent(newItem, index, onClick)
+            registerClickEvent(newItem, index, onClick,setting)
 
             // Programmatic dynamic updates bypass the condition engine for legacy support
-            if (dynamic) inventory.setItem(index, newItem.toItemStack())
+            val itemStack = ItemRenderer.render(newItem, setting.style, setting)
+            if (dynamic) inventory.setItem(index, itemStack)
+
             return index
         }
         return -1
@@ -219,7 +224,12 @@ class GuiPageImpl(
      * CLICK ROUTER
      * Evaluates which item is actually visible to the player and runs THAT specific item's code.
      */
-    private fun registerClickEvent(item: GuiItem, slot: Int, onClick: GuiClick.(InventoryClickEvent) -> Unit) {
+    private fun registerClickEvent(
+        item: GuiItem,
+        slot: Int,
+        onClick: GuiClick.(InventoryClickEvent) -> Unit,
+        context: IContextSetting
+    ) {
 
         item.onClick = { event ->
             val guiClick = GuiClick(event)
@@ -231,7 +241,11 @@ class GuiPageImpl(
             if (player != null) {
                 val activeItem = itemCache.filter { it.slot == slot }
                     .sortedByDescending { it.priority }
-                    .firstOrNull { ConditionEngine.checkRequirements(player, it.viewRequirements) }
+                    .firstOrNull {
+                        val resolvedReqs = TextResolver.resolveList(player, it.viewRequirements, context)
+                        ConditionEngine.checkRequirements(player, resolvedReqs)
+
+                    }
                 if (activeItem != null) {
                     event.item = activeItem
                     activeItem.onClick.invoke(event)

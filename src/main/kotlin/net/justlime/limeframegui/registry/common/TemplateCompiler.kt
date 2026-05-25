@@ -1,32 +1,30 @@
-package net.justlime.limeframegui.registry.gui
+package net.justlime.limeframegui.registry.common
 
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.config.FrameConfigKeys
 import net.justlime.limeframegui.config.GuiConfigHandler
 import net.justlime.limeframegui.enums.TextCase
-import net.justlime.limeframegui.models.GuiBuffer
-import net.justlime.limeframegui.models.GuiItem
-import net.justlime.limeframegui.models.GuiPageTemplate
-import net.justlime.limeframegui.models.GuiSetting
-import net.justlime.limeframegui.models.TextFormatRule
+import net.justlime.limeframegui.models.*
 import net.justlime.limeframegui.models.registry.DynamicListMask
 import net.justlime.limeframegui.registry.component.ActionRegistry
 import net.justlime.limeframegui.registry.component.ItemRegistry
-import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
+import kotlin.collections.iterator
+import kotlin.text.iterator
 
 object TemplateCompiler {
 
     /**
-     * The main entry point. Orchestrates the compilation of a GUI.
+     * Resolves the inheritance chain and returns the list of configurations to parse.
+     * Returns null if the config is a template/interface (and registers it automatically).
      */
-    fun compile(pageId: String, config: YamlConfiguration): GuiPageTemplate? {
+    private fun resolveConfigChain(id: String, config: YamlConfiguration): List<Pair<YamlConfiguration, List<Char>>>? {
         val mainSection = config.getConfigurationSection(LimeFrameAPI.keys.main)
         val type = mainSection?.getString("type")?.lowercase()
 
         if (type == "interface" || type == "template") {
-            TemplateRegistry.register(pageId, config)
+            TemplateRegistry.register(id, config)
             return null
         }
 
@@ -34,6 +32,14 @@ object TemplateCompiler {
         val configsToParse = resolveInheritance(inheritList).toMutableList()
         configsToParse.add(Pair(config, emptyList()))
 
+        return configsToParse
+    }
+
+    /**
+     * The main entry point. Orchestrates the compilation of a GUI.
+     */
+    fun compilePage(pageId: String, config: YamlConfiguration): GuiPageTemplate? {
+        val configsToParse = resolveConfigChain(pageId, config) ?: return null
         val setting = compileSettings(configsToParse)
 
         val unifiedFallbackDictionary = buildUnifiedDictionary(configsToParse)
@@ -51,6 +57,36 @@ object TemplateCompiler {
         return GuiPageTemplate(pageId, setting, finalPermissionItems, dynamicMask)
     }
 
+    /**
+     * Compile Anvil UI
+     */
+    fun compileAnvil(anvilId: String, config: YamlConfiguration): AnvilGuiSetting? {
+        val configsToParse = resolveConfigChain(anvilId, config) ?: return null
+        val baseContext = compileSettings(configsToParse)
+
+        // 2. DELEGATE to GuiConfigHandler for raw item and audio extraction
+        val anvilSetting = GuiConfigHandler.loadAnvilSetting(config)
+
+        // 3. Merge Inheritance Context & Typography into the Anvil Setting
+        anvilSetting.title = baseContext.title
+        if (baseContext.label.isNotEmpty()) {
+            anvilSetting.label = baseContext.label
+        }
+
+        // Apply typography rules to items so they render beautifully
+        anvilSetting.style.textSettings = baseContext.style.textSettings.clone()
+        anvilSetting.leftItem.style.textSettings = baseContext.style.textSettings.clone()
+        anvilSetting.rightItem.style.textSettings = baseContext.style.textSettings.clone()
+        anvilSetting.outPutItem.style.textSettings = baseContext.style.textSettings.clone()
+
+        // Inject Context Properties (Variables, Placeholders, Requirements)
+        anvilSetting.openRequirements = baseContext.openRequirements
+        anvilSetting.denyBehavior = baseContext.denyBehavior
+        anvilSetting.localVariables = baseContext.localVariables
+        anvilSetting.localPlaceholders = baseContext.localPlaceholders
+
+        return anvilSetting
+    }
     /**
      * Iterates from parent to child to build settings. 
      * Children inherit parent properties unless explicitly overridden.
@@ -70,6 +106,10 @@ object TemplateCompiler {
                 finalSetting.title = mainSec.getString(keys.inventoryTitle) ?: finalSetting.title
             }
 
+            if (mainSec.contains(keys.anvilLabel)) {
+                finalSetting.label = mainSec.getString(keys.anvilLabel) ?: finalSetting.label
+            }
+
             // Open Requirements & Deny Handlers
             if (mainSec.contains(keys.openRequirements)) {
                 finalSetting.openRequirements = mainSec.getStringList(keys.openRequirements)
@@ -77,6 +117,15 @@ object TemplateCompiler {
             if (mainSec.contains(keys.denyActions)) {
                 finalSetting.denyBehavior = ActionRegistry.parseBehavior(mainSec, keys.denyActions)
             }
+
+            if (mainSec.contains(keys.localVariables)) {
+                finalSetting.localVariables += parseStringMap(mainSec, keys.localVariables)
+            }
+            if (mainSec.contains(keys.localPlaceholders)) {
+                finalSetting.localPlaceholders += parseStringMap(mainSec, keys.localPlaceholders)
+            }
+
+
 
             // Advanced Text Formatting Section (Title, Name, Lore)
             val textSec = mainSec.getConfigurationSection(keys.textSection)
@@ -86,7 +135,22 @@ object TemplateCompiler {
                 parseTextGroupRule(textSec, "lore", finalSetting.style.textSettings.lore, keys)
             }
         }
+
         return finalSetting
+    }
+
+    /**
+     * Safely extracts a ConfigurationSection into a Map of Strings.
+     */
+    private fun parseStringMap(section: ConfigurationSection, key: String): Map<String, String> {
+        val targetSec = section.getConfigurationSection(key) ?: return emptyMap()
+        val map = mutableMapOf<String, String>()
+
+        targetSec.getKeys(false).forEach { k ->
+            map[k] = targetSec.getString(k) ?: ""
+        }
+
+        return map
     }
 
     /**
@@ -138,7 +202,6 @@ object TemplateCompiler {
                     val itemSec = ingredientsSection.getConfigurationSection(key) ?: continue
                     val item = GuiConfigHandler.loadItem(itemSec)
 
-                    // 🌟 Add to list instead of overwriting
                     unifiedMap.getOrPut(key.first()) { mutableListOf() }.add(item)
                 }
             }
@@ -150,13 +213,13 @@ object TemplateCompiler {
                 if (!charStr.isNullOrEmpty()) {
                     val item = GuiConfigHandler.loadItem(itemSec)
 
-                    // 🌟 Add to list instead of overwriting
                     unifiedMap.getOrPut(charStr.first()) { mutableListOf() }.add(item)
                 }
             }
         }
         return unifiedMap
     }
+
     /**
      * The core rendering engine. Applies patterns and explicit slots layer by layer.
      * Returns the finalized layout map and the dynamic slots list.
@@ -225,17 +288,22 @@ object TemplateCompiler {
                     for (char in cleanRow) {
                         when (char) {
                             dynamicChar -> masterDynamicSlots.add(currentSlot)
-                            '!' -> masterLayout[currentSlot] = mutableListOf(GuiItem(Material.AIR).apply { slot = currentSlot })
+                            '!' -> masterLayout[currentSlot] =
+                                mutableListOf(GuiItem().apply { slot = currentSlot })
+
                             '.', '_' -> {}
                             else -> {
                                 val itemsToPlace = if (excludedChars.contains(char)) {
                                     unifiedFallbackDictionary[char] ?: ItemRegistry.getByChar(char)?.let { listOf(it) }
                                 } else {
-                                    localDictionary[char] ?: unifiedFallbackDictionary[char] ?: ItemRegistry.getByChar(char)?.let { listOf(it) }
+                                    localDictionary[char] ?: unifiedFallbackDictionary[char] ?: ItemRegistry.getByChar(
+                                        char
+                                    )?.let { listOf(it) }
                                 }
 
                                 if (itemsToPlace != null) {
-                                    masterLayout[currentSlot] = itemsToPlace.map { it.clone().apply { slot = currentSlot } }.toMutableList()
+                                    masterLayout[currentSlot] =
+                                        itemsToPlace.map { it.clone().apply { slot = currentSlot } }.toMutableList()
                                 }
                             }
                         }
@@ -245,7 +313,9 @@ object TemplateCompiler {
 
                 for (explicitItem in localExplicitItems) {
                     explicitItem.slot?.let { explicitLayout.getOrPut(it) { mutableListOf() }.add(explicitItem.clone()) }
-                    explicitItem.slotList.forEach { explicitLayout.getOrPut(it) { mutableListOf() }.add(explicitItem.clone()) }
+                    explicitItem.slotList.forEach {
+                        explicitLayout.getOrPut(it) { mutableListOf() }.add(explicitItem.clone())
+                    }
                 }
             }
         }
@@ -254,13 +324,14 @@ object TemplateCompiler {
         for ((perm, layout) in permissionLayouts) {
             val explicitOverrides = explicitSlotLayouts[perm] ?: emptyMap()
             for ((slot, items) in explicitOverrides) {
-                layout[slot] = items
+                layout.getOrPut(slot) { mutableListOf() }.addAll(items)
             }
-            finalPermissionItems[perm] = layout.values.flatten()
+            finalPermissionItems[perm] = layout.values.flatten().sortedBy { it.priority }
         }
 
         return Pair(finalPermissionItems, masterDynamicSlots.toList())
     }
+
     /**
      * Builds the dynamic mask logic for pagination limits, templates, and bounds.
      */
@@ -269,18 +340,14 @@ object TemplateCompiler {
         if (dynamicListSection == null || masterDynamicSlotsList.isEmpty()) return null
 
         val populatorId = dynamicListSection.getString("populator_id") ?: ""
-
-        // 🌟 NEW: Parse multiple templates into a Map
         val parsedTemplates = mutableMapOf<String, GuiItem>()
-
-        // Backwards compatibility: If they still use the old single 'template' key
         if (dynamicListSection.contains("template")) {
             dynamicListSection.getConfigurationSection("template")?.let {
                 parsedTemplates["default"] = GuiConfigHandler.loadItem(it)
             }
         }
 
-        // 🌟 NEW: Parse the multi-template format
+        //  Parse the multi-template format
         val templatesSection = dynamicListSection.getConfigurationSection("templates")
         if (templatesSection != null) {
             for (key in templatesSection.getKeys(false)) {
@@ -289,7 +356,6 @@ object TemplateCompiler {
             }
         }
 
-        // If no templates were found at all, we can't render the list
         if (parsedTemplates.isEmpty()) return null
 
         val bufferConfig = GuiBuffer()
@@ -367,7 +433,7 @@ object TemplateCompiler {
         val variants = mutableMapOf<String, MutableMap<Int, String>>()
         val patternPath = LimeFrameAPI.keys.pattern
 
-        // 1. Child page format (Direct List) -> Maps to "default"
+        // Child page format (Direct List) -> Maps to "default"
         if (config.isList(patternPath)) {
             val list = config.getStringList(patternPath)
             val defaultMap = mutableMapOf<Int, String>()
@@ -376,7 +442,7 @@ object TemplateCompiler {
             return variants
         }
 
-        // 2. Template format (Mapped by Row Count / Permissions)
+        // Template format (Mapped by Row Count / Permissions)
         val patternSection = config.getConfigurationSection(patternPath) ?: return variants
 
         for (key in patternSection.getKeys(false)) {

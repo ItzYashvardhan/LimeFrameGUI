@@ -39,6 +39,7 @@ import net.justlime.limeframegui.util.item
 import net.justlime.limeframegui.util.update
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
 
 
 fun formattedPage(setting: GuiSetting, player: Player) {
@@ -47,14 +48,14 @@ fun formattedPage(setting: GuiSetting, player: Player) {
     ChestGUI(setting) {
 
         val item3 = GuiItem(
-            material = Material.PLAYER_HEAD, name = "Player: %player_name%", lore = listOf(
+            ItemStack(Material.PLAYER_HEAD), name = "Player: %player_name%", lore = listOf(
                 "<green>Playtime Stats1: %statistic_time_played%", "<green>World: <white>{world}</white>", "<aqua>Click to refresh"
             ), texture = "%player_name%"
 
         )
 
         val item31 = GuiItem(
-            material = Material.PLAYER_HEAD, name = "Player: %player_name%", lore = listOf(
+            ItemStack(Material.PLAYER_HEAD), name = "Player: %player_name%", lore = listOf(
                 "<green>Playtime Stats2: %statistic_time_played%", "<aqua>Click to refresh"
             ), texture = "%player_name%"
 
@@ -62,7 +63,7 @@ fun formattedPage(setting: GuiSetting, player: Player) {
 
 
         val item1 = GuiItem(
-            Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
+            ItemStack(Material.PAPER), name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
                 "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
             )
         )
@@ -79,7 +80,7 @@ fun formattedPage(setting: GuiSetting, player: Player) {
         addPage {
 
             val item12 = GuiItem(
-                Material.PAPER, name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
+                ItemStack(Material.PAPER), name = "<gradient:red:blue>This is a Gradient title</gradient>", lore = listOf(
                     "<red>This is a red line</red>", "<green>This is a green line</green>", "<blue>This is a blue line</blue>"
                 )
             )
@@ -89,14 +90,14 @@ fun formattedPage(setting: GuiSetting, player: Player) {
             }
 
             val item2 = GuiItem(
-                material = Material.GOLD_INGOT, name = "Player: %betterteams_name%", lore = listOf(
+                ItemStack(Material.GOLD_INGOT), name = "Player: %betterteams_name%", lore = listOf(
                     "<gold>Balance: %vault_eco_balance%", "<white>Location: %player_x%, %player_y%, %player_z%", "<white>PlayTime: <b>%statistic_time_played% </b>",//
                     "<white> {world}", "custom: {time}"
                 )
             )
 
             val item4 = GuiItem(
-                material = Material.TOTEM_OF_UNDYING, name = "<#FF00FF>Custom PlaceHolder</#FF00FF>", lore = listOf(
+                ItemStack(Material.TOTEM_OF_UNDYING), name = "<#FF00FF>Custom PlaceHolder</#FF00FF>", lore = listOf(
                     "<gray>World: {world}</gray>", "<gray>Location: {location}</gray>"
 
                 ), style = setting.style.copy(
@@ -106,12 +107,12 @@ fun formattedPage(setting: GuiSetting, player: Player) {
                 )
             )
 
-            val item5 = GuiItem(Material.PLAYER_HEAD, texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
+            val item5 = GuiItem(ItemStack(Material.PLAYER_HEAD), texture = "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNWQzMDhhZTI3YjU4YjY5NjQ1NDk3ZjlkYTg2NTk3ZWRhOTQ3ZWFjZDEwYzI5ZTNkNGJiZjNiYzc2Y2ViMWVhYiJ9fX0=")
 
             item2.style.placeholder = mutableMapOf("{time}" to player.ticksLived.toString())
             addItem(item2) { event ->
                 event.item?.style?.placeholder = mutableMapOf("{time}" to player.ticksLived.toString())
-                event.update(session.context)
+                event.update(session.context,setting)
             }
 
             addItem(item4)

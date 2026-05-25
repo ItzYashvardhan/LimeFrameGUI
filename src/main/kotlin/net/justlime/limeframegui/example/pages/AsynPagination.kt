@@ -7,6 +7,7 @@ import net.justlime.limeframegui.menu.ChestGUI
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
 
 private object MockCodeDAO {
     /**
@@ -50,14 +51,14 @@ fun openAsyncGui(viewer: Player, setting: GuiSetting, pageId: Int) {
                 cleanupMargin = 8
             }
         }
-
-        val item = GuiItem(Material.LIME_STAINED_GLASS_PANE, slotList = (45..53).toList())
+        val stack = ItemStack(Material.LIME_STAINED_GLASS_PANE)
+        val item = GuiItem(stack, slotList = (45..53).toList())
         setItem(item)
 
         addPage {
             MockCodeDAO.fetchAsync(450, pageId - 1) { codes ->
                 codes.forEach { code ->
-                    val item = GuiItem(Material.PAPER, name = code)
+                    val item = GuiItem(ItemStack(Material.PAPER), name = code)
                     addItemLater(item) {
                         openPageItem(viewer, viewerPage, setting)
                     }
@@ -79,7 +80,7 @@ fun openAsyncGui(viewer: Player, setting: GuiSetting, pageId: Int) {
 fun openPageItem(viewer: Player, pageId: Int, setting: GuiSetting) {
     ChestGUI(3, "hello") {
         onClick { it.isCancelled = true }
-        val item = GuiItem(Material.BARREL, "Go Back")
+        val item = GuiItem(ItemStack(Material.BARREL), "Go Back")
         setItem(item, 14) {
             openAsyncGui(viewer, setting, pageId)
         }

@@ -1,13 +1,15 @@
 package net.justlime.limeframegui.models
 
+import net.justlime.limeframegui.context.IContextSetting
+import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.registry.GuiSound
 
 data class AnvilGuiSetting(
-    val title: String,
-    val label: String = "",
-    val leftItem: GuiItem,
-    val rightItem: GuiItem,
-    val outPutItem: GuiItem,
+    override var title: String,
+    var label: String = "",
+    var leftItem: GuiItem,
+    var rightItem: GuiItem,
+    var outPutItem: GuiItem,
 
     // Compiled lists for instant playback
     val openSounds: List<GuiSound> = emptyList(),
@@ -19,9 +21,14 @@ data class AnvilGuiSetting(
     val cancelSoundAlias: String? = null,
     val submitSoundAlias: String? = null,
 
-    val style: GuiStyleSheet,
-    val preventClose: Boolean = false
-) {
+    override var style: GuiStyleSheet,
+    var preventClose: Boolean = false,
+    override var openRequirements: List<String> = emptyList(),
+    override var denyBehavior: ActionBehavior = ActionBehavior.Simple(emptyList()),
+    override var localVariables: Map<String, String> = emptyMap(),
+    override var localPlaceholders: Map<String, String> = emptyMap()
+) : IContextSetting {
+
     fun clone(): AnvilGuiSetting {
         return AnvilGuiSetting(
             title = title,
@@ -40,8 +47,14 @@ data class AnvilGuiSetting(
             cancelSoundAlias = cancelSoundAlias,
             submitSoundAlias = submitSoundAlias,
 
-            style = style.clone(),
-            preventClose = preventClose
+            style = style.copy(),
+            preventClose = preventClose,
+
+            // Fix: Added missing deep copies!
+            openRequirements = ArrayList(openRequirements),
+            denyBehavior = denyBehavior,
+            localVariables = HashMap(localVariables),
+            localPlaceholders = HashMap(localPlaceholders)
         )
     }
 }

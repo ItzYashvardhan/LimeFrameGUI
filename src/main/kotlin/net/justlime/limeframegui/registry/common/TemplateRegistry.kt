@@ -1,4 +1,4 @@
-package net.justlime.limeframegui.registry.gui
+package net.justlime.limeframegui.registry.common
 
 import org.bukkit.configuration.file.YamlConfiguration
 

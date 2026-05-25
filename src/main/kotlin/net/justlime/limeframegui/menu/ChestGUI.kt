@@ -9,7 +9,7 @@ import org.bukkit.entity.Player
  * The Blueprint class.
  * * This class DOES NOT hold any active inventories or listeners.
  * It simply holds the configuration (rows, title, builder block).
- * * When you call open(), it spins up a new [GuiSession].
+ * * When we call open(), it spins up a new [GuiSession].
  */
 class ChestGUI(val setting: GuiSetting, val block: ChestGUIBuilder.() -> Unit = {}) {
 

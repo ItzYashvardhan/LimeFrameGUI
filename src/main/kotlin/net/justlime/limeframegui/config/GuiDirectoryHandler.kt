@@ -9,8 +9,9 @@ import net.justlime.limeframegui.registry.component.PlaceholderRegistry
 import net.justlime.limeframegui.registry.component.SoundRegistry
 import net.justlime.limeframegui.registry.component.TextureRegistry
 import net.justlime.limeframegui.registry.gui.PageRegistry
-import net.justlime.limeframegui.registry.gui.TemplateCompiler
-import net.justlime.limeframegui.registry.gui.TemplateRegistry
+import net.justlime.limeframegui.registry.common.TemplateCompiler
+import net.justlime.limeframegui.registry.common.TemplateRegistry
+import net.justlime.limeframegui.registry.input.InputRegistry
 import net.justlime.limeframegui.util.extractDefaultsFromJar
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
@@ -37,6 +38,7 @@ object GuiDirectoryHandler {
         loadPlaceholders(File(guiFolder, "component"))
         loadLocale(guiFolder)
         loadComponents(File(guiFolder, "component"))
+        loadInputs(plugin, File(guiFolder, "inputs"))
         loadPages(plugin, File(guiFolder, "pages"))
     }
 
@@ -117,6 +119,29 @@ object GuiDirectoryHandler {
         }
     }
 
+    private fun loadInputs(plugin: JavaPlugin, inputsFolder: File) {
+        if (!inputsFolder.exists()) inputsFolder.mkdirs()
+
+        val yamlFiles = inputsFolder.walk().filter { it.isFile && it.extension == "yml" }.toList()
+
+        for (file in yamlFiles) {
+            try {
+                val fileHandler = YamlFileHandler(file)
+                val relativePath = file.relativeTo(inputsFolder).path
+                val inputId = relativePath.removeSuffix(".yml").replace("\\", "/")
+
+                val anvilSetting = TemplateCompiler.compileAnvil(inputId, fileHandler.config)
+                if (anvilSetting != null) {
+                    InputRegistry.register(inputId, anvilSetting)
+                }
+            } catch (e: Exception) {
+                plugin.logger.severe("[LimeFrameGUI] Failed to parse input file: ${file.name}")
+                e.printStackTrace()
+            }
+        }
+        plugin.logger.info("[LimeFrameGUI] Successfully indexed ${InputRegistry.getInputs().size} anvil inputs.")
+    }
+
     /**
      * Executes the two-pass loading system for UI layouts.
      * Pass 1: Identifies and caches templates to satisfy inheritance chains.
@@ -139,7 +164,7 @@ object GuiDirectoryHandler {
                 if (type == "interface" || type == "template") {
                     val relativePath = file.relativeTo(pagesFolder).path
                     val pageId = relativePath.removeSuffix(".yml").replace("\\", "/")
-                    TemplateCompiler.compile(pageId, fileHandler.config)
+                    TemplateCompiler.compilePage(pageId, fileHandler.config)
                 } else {
                     standardPages.add(file)
                 }
@@ -155,7 +180,7 @@ object GuiDirectoryHandler {
                 val relativePath = file.relativeTo(pagesFolder).path
                 val pageId = relativePath.removeSuffix(".yml").replace("\\", "/")
 
-                val template = TemplateCompiler.compile(pageId, fileHandler.config)
+                val template = TemplateCompiler.compilePage(pageId, fileHandler.config)
                 if (template != null) {
                     PageRegistry.register(template)
                 }
@@ -178,6 +203,7 @@ object GuiDirectoryHandler {
 
         // Flush all memory registries\
         PlaceholderRegistry.clear()
+        InputRegistry.clear()
         PageRegistry.clear()
         TemplateRegistry.clear()
         ItemRegistry.clear()
@@ -199,6 +225,7 @@ object GuiDirectoryHandler {
         loadPlaceholders(File(guiFolder, "component"))
         loadLocale(guiFolder)
         loadComponents(File(guiFolder, "component"))
+        loadInputs(plugin, File(guiFolder, "inputs"))
         loadPages(plugin, File(guiFolder, "pages"))
 
         plugin.logger.info("[LimeFrameGUI] Reload sequence complete.")

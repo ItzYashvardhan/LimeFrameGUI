@@ -3,13 +3,16 @@ package net.justlime.limeframegui.event
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.builder.AnvilGuiBuilder
 import net.justlime.limeframegui.color.FontStyle
+import net.justlime.limeframegui.engine.ActionEngine
+import net.justlime.limeframegui.engine.TextResolver
 import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.models.AnvilGuiSetting
-import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.models.TextFormatRule
+import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
 import net.justlime.limeframegui.models.registry.GuiSound
 import net.justlime.limeframegui.registry.component.SoundRegistry
+import net.justlime.limeframegui.session.ItemRenderer
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
@@ -17,9 +20,10 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import net.wesjd.anvilgui.AnvilGUI
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import org.bukkit.event.inventory.ClickType
 import java.util.*
 
-class AnvilGuiEventImpl(
+class AnvilEventImpl(
     private val player: Player,
     private val setting: AnvilGuiSetting,
     private val builder: AnvilGuiBuilder
@@ -31,32 +35,36 @@ class AnvilGuiEventImpl(
             val context = setting.style.copy()
             if (context.viewer == null) context.viewer = player
 
-            val rawTitle = FontStyle.applyStyle(setting.title, context, context.textSettings.title)
-            val rawLabel = FontStyle.applyStyle(setting.label, context, TextFormatRule())
-            val jsonTitle = componentToJson(rawTitle)
-            val styledLeft = styleItem(setting.leftItem, context)
-            val styledRight = styleItem(setting.rightItem, context)
-            val styledOutput = styleItem(setting.outPutItem, context)
+            val resolvedTitle = TextResolver.resolve(player, setting.title, setting)
+            val rawTitle = FontStyle.applyStyle(resolvedTitle, context, context.textSettings.title)
 
-            // --- INJECTED: Play Open Sound via Registry ---
+            val resolvedLabel = TextResolver.resolve(player, setting.label, setting)
+            val rawLabel = FontStyle.applyStyle(resolvedLabel, context, TextFormatRule())
+
+            val jsonTitle = componentToJson(rawTitle)
+
+            val leftStack = ItemRenderer.render(setting.leftItem, context, setting)
+            val outputStack = ItemRenderer.render(setting.outPutItem, context, setting)
+
             setting.openSoundAlias?.let { alias ->
                 GuiSound.playPack(player, SoundRegistry.get(alias))
             }
 
-            // Initialize Anvil Builder
+            // Anvil Builder
             val anvilBuilder = AnvilGUI.Builder()
                 .plugin(LimeFrameAPI.getPlugin())
                 .jsonTitle(jsonTitle)
                 .text(rawLabel)
-                .itemLeft(styledLeft.toItemStack())
-                .itemOutput(styledOutput.toItemStack())
+                .itemLeft(leftStack)
+                .itemOutput(outputStack)
 
-            // Feature: Right Item
-            if (styledRight.material != Material.AIR) {
-                anvilBuilder.itemRight(styledRight.toItemStack())
+            // Right Item (Checked against baseItem.type)
+            if (setting.rightItem.baseItem.type != Material.AIR) {
+                val rightStack = ItemRenderer.render(setting.rightItem, context, setting)
+                anvilBuilder.itemRight(rightStack)
             }
 
-            // Feature: Prevent Close
+            // Prevent Close
             if (setting.preventClose) {
                 anvilBuilder.preventClose()
             }
@@ -131,19 +139,15 @@ class AnvilGuiEventImpl(
             submitAlias?.let { alias ->
                 GuiSound.playPack(player, SoundRegistry.get(alias))
             }
-
+            val outputAction = setting.outPutItem.style.action
+            if (!outputAction.isNullOrEmpty()) {
+                val response = ActionTagRegistryResponse(player, "", null, setting)
+                ActionEngine.executePack(response, outputAction, ClickType.LEFT)
+            }
             builder.onOutputClickHandler?.invoke(state, userInput)
             return Collections.singletonList(AnvilGUI.ResponseAction.close())
         }
-
         return Collections.singletonList(AnvilGUI.ResponseAction.close())
-    }
-
-    private fun styleItem(item: GuiItem, context: GuiStyleSheet): GuiItem {
-        return item.clone().apply {
-            name = FontStyle.applyStyle(name, context, style.textSettings.name)
-            lore = FontStyle.applyStyle(lore, context, style.textSettings.lore)
-        }
     }
 
     private fun componentToJson(text: String): String {

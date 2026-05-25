@@ -6,6 +6,7 @@ import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.menu.GuiPage
 import net.justlime.limeframegui.builder.ChestGUIBuilder
 import net.justlime.limeframegui.engine.ConditionEngine
+import net.justlime.limeframegui.engine.TextResolver
 import net.justlime.limeframegui.models.GuiBuffer
 import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.menu.ChestGUI
@@ -183,21 +184,26 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
     private fun renderPage(pageId: Int, guiPage: GuiPage) {
         val styledInventory = createStylishInventory(pageId)
 
+        // Helper to check requirements with full TextResolver context!
+        fun getValidItem(items: List<GuiItem>): GuiItem? {
+            return items.sortedByDescending { it.priority }
+                .firstOrNull { item ->
+                    // 🌟 THIS IS THE FIX: Resolve variables/PAPI before checking the condition!
+                    val resolvedReqs = TextResolver.resolveList(viewer, item.viewRequirements, blueprint.setting)
+                    ConditionEngine.checkRequirements(viewer, resolvedReqs)
+                }
+        }
+
         // 1. Process Global Page
         if (pageId != 0) {
-            // Group the flat list by slot
             val globalItemsBySlot = globalPage.getItems().filter { it.slot != null }.groupBy { it.slot!! }
 
             for ((slot, items) in globalItemsBySlot) {
-                val isDynamic = globalPage.trackAddItemSlot.containsKey(slot)
-                if (isDynamic) continue
+                if (globalPage.trackAddItemSlot.containsKey(slot)) continue
 
-                // 🌟 Filter: Highest Priority -> Lowest Priority -> Check Requirement
-                val validItem = items.sortedByDescending { it.priority }
-                    .firstOrNull { ConditionEngine.checkRequirements(viewer, it.viewRequirements) }
-
+                val validItem = getValidItem(items)
                 if (validItem != null) {
-                    val globalStack = ItemRenderer.render(validItem, context)
+                    val globalStack = ItemRenderer.render(validItem, context, blueprint.setting)
                     styledInventory.setItem(slot, globalStack)
                 }
             }
@@ -207,12 +213,9 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         val localItemsBySlot = guiPage.getItems().filter { it.slot != null }.groupBy { it.slot!! }
 
         for ((slot, items) in localItemsBySlot) {
-            // 🌟 Filter: Highest Priority -> Lowest Priority -> Check Requirement
-            val validItem = items.sortedByDescending { it.priority }
-                .firstOrNull { ConditionEngine.checkRequirements(viewer, it.viewRequirements) }
-
+            val validItem = getValidItem(items)
             if (validItem != null) {
-                val finalItemStack = ItemRenderer.render(validItem, context)
+                val finalItemStack = ItemRenderer.render(validItem, context, blueprint.setting)
                 styledInventory.setItem(slot, finalItemStack)
             }
         }
@@ -238,13 +241,15 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
 
     private fun startStateObserver(pageId: Int, inventory: Inventory) {
         activeObserverTask?.cancel()
-
         val volatileNodes = mutableMapOf<Int, GuiItem>()
 
-        // Helper to find the "Winning" item for a slot
+        // Helper to check requirements with full TextResolver context!
         fun getActiveItem(items: List<GuiItem>): GuiItem? {
             return items.sortedByDescending { it.priority }
-                .firstOrNull { ConditionEngine.checkRequirements(viewer, it.viewRequirements) }
+                .firstOrNull { item ->
+                    val resolvedReqs = TextResolver.resolveList(viewer, item.viewRequirements, blueprint.setting)
+                    ConditionEngine.checkRequirements(viewer, resolvedReqs)
+                }
         }
 
         // 1. Scan Global Page for volatile items
@@ -258,7 +263,7 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
             }
         }
 
-        // 2. Scan Current Page for volatile items (overwrites global if overlapping)
+        // 2. Scan Current Page for volatile items
         val localItemsBySlot = builder.pages[pageId]?.getItems()?.filter { it.slot != null }?.groupBy { it.slot!! } ?: emptyMap()
         for ((slot, items) in localItemsBySlot) {
             val winner = getActiveItem(items)
@@ -272,7 +277,6 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         // 3. Launch the Observer
         activeObserverTask = object : BukkitRunnable() {
             var ticksLived = 0
-
             override fun run() {
                 if (!viewer.isOnline || viewer.openInventory.topInventory != inventory) {
                     cancel()
@@ -280,19 +284,15 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
                 }
 
                 ticksLived++
-
                 for ((slot, blueprintItem) in volatileNodes) {
                     val interval = blueprintItem.updateInterval ?: continue
                     if (ticksLived % interval == 0) {
-                        // NOTE: If an item requirement dynamically changes while they have the GUI open
-                        // (e.g. they suddenly lose VIP), a softRefresh() handles the complete redraw!
-                        val updatedStack = ItemRenderer.render(blueprintItem, context)
+                        val updatedStack = ItemRenderer.render(blueprintItem, context, blueprint.setting)
                         inventory.setItem(slot, updatedStack)
                     }
                 }
             }
         }
-
         activeObserverTask?.runTaskTimer(LimeFrameAPI.getPlugin(), 1L, 1L)
     }
 }
