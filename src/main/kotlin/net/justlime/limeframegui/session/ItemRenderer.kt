@@ -24,13 +24,13 @@ object ItemRenderer {
 
         val rawName = item.currentName
         if (rawName.isNotEmpty()) {
-            val resolvedName = TextResolver.resolve(viewer, rawName, setting)
+            val resolvedName = TextResolver.resolve(viewer, rawName, setting, finalContext)
             meta.setDisplayName(FontStyle.applyStyle(resolvedName, finalContext, finalContext.textSettings.name))
         }
 
         val rawLore = item.currentLore
         if (rawLore.isNotEmpty()) {
-            val resolvedLore = TextResolver.resolveList(viewer, rawLore, setting)
+            val resolvedLore = TextResolver.resolveList(viewer, rawLore, setting, finalContext)
             meta.lore = FontStyle.applyStyle(resolvedLore, finalContext, finalContext.textSettings.lore)
         }
 

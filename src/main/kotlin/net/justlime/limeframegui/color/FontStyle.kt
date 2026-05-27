@@ -1,6 +1,5 @@
 package net.justlime.limeframegui.color
 
-import me.clip.placeholderapi.PlaceholderAPI
 import net.justlime.limeframegui.engine.TextEngine
 import net.justlime.limeframegui.enums.CapsState
 import net.justlime.limeframegui.enums.ColorType
@@ -32,7 +31,6 @@ object FontStyle {
         }
     }
 
-    private val isPlaceholderAPIEnabled = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null
 
     /**
      * - Apply color formatting based on the current ColorType.
@@ -41,19 +39,6 @@ object FontStyle {
      */
     fun applyStyle(text: String, style: GuiStyleSheet, rule: TextFormatRule): String {
         var newText = text
-
-        // Placeholders
-        val playerName = style.offlinePlayer?.name
-        newText = newText.customPlaceholder(playerName, style.placeholder)
-
-        if (isPlaceholderAPIEnabled) {
-            newText = when {
-                style.offlinePlayer != null -> PlaceholderAPI.setPlaceholders(style.offlinePlayer, newText)
-                style.viewer != null -> PlaceholderAPI.setPlaceholders(style.viewer, newText)
-                else -> newText
-            }
-        }
-
         // Apply Casing and Word Wrap
         newText = TextEngine.applyCasing(newText, rule.textCase)
         newText = TextEngine.applyWrap(newText, rule.wrapLength)
@@ -145,15 +130,6 @@ object FontStyle {
             i++
         }
         return builder.toString()
-    }
-
-    private fun String.customPlaceholder(name: String?, customPlaceholders: Map<String, String>?): String {
-        var result = this
-        if (name != null) {
-            result = result.replace("{player}", name)
-        }
-        customPlaceholders?.forEach { (key, value) -> result = result.replace(key, value) }
-        return result
     }
 
     /**

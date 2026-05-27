@@ -112,7 +112,10 @@ object ActionRegistry : IRegistry {
             parseStandardNode(section)
         }
 
-        val generatedId = "inline_" + (section.currentPath?.replace(".", "_") ?: java.util.UUID.randomUUID().toString().take(8))
+        val pathName = section.currentPath?.replace(".", "_") ?: "root"
+        val uniqueHash = java.util.UUID.randomUUID().toString().take(6)
+        val generatedId = "inline_${pathName}_$uniqueHash"
+
         actionPacks[generatedId] = pack
         return generatedId
     }

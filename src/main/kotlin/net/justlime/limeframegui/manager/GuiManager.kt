@@ -1,11 +1,13 @@
 package net.justlime.limeframegui.manager
 
+import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.builder.AnvilGuiBuilder
 import net.justlime.limeframegui.context.IContextSetting
 import net.justlime.limeframegui.engine.ActionEngine
 import net.justlime.limeframegui.engine.ConditionEngine
 import net.justlime.limeframegui.engine.TextResolver
 import net.justlime.limeframegui.event.AnvilEventImpl
+import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.models.GuiPageTemplate
 import net.justlime.limeframegui.models.registry.ActionBehavior
@@ -13,9 +15,12 @@ import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
 import net.justlime.limeframegui.registry.gui.ListPopulatorRegistry
 import net.justlime.limeframegui.registry.gui.PageRegistry
 import net.justlime.limeframegui.registry.input.InputRegistry
+import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
 import java.util.UUID
+import kotlin.collections.ArrayDeque
 
 /**
  * The central rendering engine for the GUI framework.
@@ -51,24 +56,42 @@ object GuiManager {
             return false
         }
 
+        val currentlyOpen = currentGui[player.uniqueId]
+        if (currentlyOpen != null && !currentlyOpen.startsWith("input:")) {
+            playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
+        }
+        currentGui[player.uniqueId] = "input:$inputId"
+
         val builder = AnvilGuiBuilder(setting)
 
         builder.onConfirmClick { state, userInput ->
-            val finalCommand = commandRaw.replace("{input}", userInput)
-            val response = ActionTagRegistryResponse(player, finalCommand, null, context)
-            val behavior = ActionBehavior.Simple(listOf(finalCommand))
-            ActionEngine.executeBehavior(response, behavior)
+            if (userInput.isNotBlank()) {
+                val finalCommand = commandRaw.replace("{input}", userInput)
+                val response = ActionTagRegistryResponse(player, finalCommand, null, context)
+                val behavior = ActionBehavior.Simple(listOf(finalCommand))
+                ActionEngine.executeBehavior(response, behavior)
+            }
         }
 
         builder.onClose { closedPlayer ->
-            back(closedPlayer)
+
+            if (currentGui[closedPlayer.uniqueId] == "input:$inputId") {
+                val targetData = context.style.offlinePlayer
+                if (FoliaLibHook.isInitialized()) {
+                    FoliaLibHook.foliaLib.scheduler.runNextTick { back(closedPlayer,targetData) }
+                } else {
+                    Bukkit.getScheduler().runTaskLater(LimeFrameAPI.getPlugin(), Runnable {
+                        back(closedPlayer,targetData)
+                    }, 1L)
+                }
+            }
         }
 
         AnvilEventImpl(player, setting, builder).open()
         return true
     }
 
-    fun open(player: Player, guiId: String,recordHistory: Boolean = true): Boolean {
+    fun open(player: Player, guiId: String, recordHistory: Boolean = true, targetData: OfflinePlayer? = null): Boolean {
         val template: GuiPageTemplate = PageRegistry.get(guiId) ?: run {
             println("[LimeFrameGUI] Error: Attempted to open unknown page '$guiId'")
             return false
@@ -87,9 +110,17 @@ object GuiManager {
                 playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
             }
         }
+        currentGui[player.uniqueId] = guiId
 
-        val resolvedTitle = TextResolver.resolve(player, template.setting.title, template.setting)
-        val localizedSetting = template.setting.copy(title = resolvedTitle)
+        val updatedStyle = template.setting.style.copy(
+            offlinePlayer = targetData ?: template.setting.style.offlinePlayer ?: template.setting.style.viewer
+        )
+
+        val resolvedTitle = TextResolver.resolve(player, template.setting.title, template.setting, updatedStyle)
+
+        val localizedSetting = template.setting.copy(
+            title = resolvedTitle, style = updatedStyle
+        )
 
         ChestGUI(localizedSetting) {
             onClick { it.isCancelled = true }
@@ -144,7 +175,10 @@ object GuiManager {
                 } else {
                     // Normal Static Item
                     val playerItem = templateItem.clone()
-                    playerItem.style.viewer = player
+                    playerItem.style.offlinePlayer = localizedSetting.style.offlinePlayer
+                    if (playerItem.style.offlinePlayer == null){
+                        playerItem.style.viewer = player
+                    }
                     setItem(playerItem) { event -> playerItem.onClick(event) }
                 }
             }
@@ -164,17 +198,17 @@ object GuiManager {
     /**
      * Navigates the player back to their previous GUI.
      */
-    fun back(player: Player): Boolean {
+    fun back(player: Player,targetData: OfflinePlayer?): Boolean {
         val history = playerHistory[player.uniqueId] ?: return false
         val previousGuiId = history.removeLastOrNull() ?: return false
-        return open(player, previousGuiId, recordHistory = false)
+        return open(player, previousGuiId, recordHistory = false,targetData)
     }
 
     /**
      * Clears a player's history (Call this on PlayerQuitEvent or when they close the menu entirely)
      */
-    fun clearHistory(player: Player) {
-        playerHistory.remove(player.uniqueId)
-        currentGui.remove(player.uniqueId)
+    fun clearHistory(uniqueId: UUID) {
+        playerHistory.remove(uniqueId)
+        currentGui.remove(uniqueId)
     }
 }

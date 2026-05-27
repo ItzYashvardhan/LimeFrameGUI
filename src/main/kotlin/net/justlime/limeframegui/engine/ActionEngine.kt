@@ -2,8 +2,10 @@ package net.justlime.limeframegui.engine
 
 import me.clip.placeholderapi.PlaceholderAPI
 import net.justlime.limeframegui.api.LimeFrameAPI
+import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.manager.GuiManager
+import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
 import net.justlime.limeframegui.models.registry.GuiActionPack
@@ -13,6 +15,7 @@ import net.justlime.limeframegui.registry.component.ActionRegistry
 import net.justlime.limeframegui.registry.component.ActionTagRegistry
 import net.justlime.limeframegui.registry.component.SoundRegistry
 import org.bukkit.Bukkit
+import org.bukkit.ChatColor
 import org.bukkit.entity.Player
 import org.bukkit.event.inventory.ClickType
 
@@ -23,8 +26,9 @@ object ActionEngine {
             val text = response.context?.let {
                 TextResolver.resolve(response.player, response.payload, it)
             } ?: response.payload
-            // TODO: Pass through Hex/MiniMessage color translator
-            response.player.sendMessage(text)
+            val coloredText =
+                FontStyle.miniMessage?.legacyToMini(text) ?: ChatColor.translateAlternateColorCodes('&', text)
+            response.player.sendMessage(coloredText)
         }
 
         ActionTagRegistry.register("[sound]") { response ->
@@ -50,12 +54,11 @@ object ActionEngine {
         }
 
         ActionTagRegistry.register("[action]") { response ->
-            // Make sure executePack takes response.context now!
             executePack(response, response.payload, ClickType.UNKNOWN)
         }
 
         // The Anvil Input Tag
-        val inputPayloadRegex = Regex("(?i)^(['\"]?[-a-zA-Z0-9_./]+['\"]?)\\s+(.+)$")
+        val inputPayloadRegex = Regex("(?i)^(['\"]?[-a-zA-Z0-9_./]+['\"]?)(?:\\s+(.+))?$")
         ActionTagRegistry.register("[input]") { response ->
             if (response.context == null) {
                 Bukkit.getLogger().warning("[LimeFrameGUI] Cannot open [input] without a GUI Context!")
@@ -64,9 +67,8 @@ object ActionEngine {
 
             val match = inputPayloadRegex.matchEntire(response.payload.trim())
             if (match != null) {
-                val inputId = match.groupValues[1].replace("'", "").replace("\"", "") // Extracts 'create'
-                val rawCommand = match.groupValues[2] // Extracts 'team {input}'
-
+                val inputId = match.groupValues[1].replace("'", "").replace("\"", "")
+                val rawCommand = match.groupValues[2]
                 response.player.closeInventory()
                 GuiManager.openInput(response.player, inputId, rawCommand, response.context)
             } else {
@@ -95,8 +97,10 @@ object ActionEngine {
             val parts = response.payload.split(" ")
             val guiId = parts[0]
             val pageId = parts.getOrNull(1)?.toIntOrNull()
+            val clickedItem = response.item
+            val targetData = clickedItem?.style?.offlinePlayer ?: response.context?.style?.offlinePlayer
 
-            GuiManager.open(response.player, guiId)
+            GuiManager.open(response.player, guiId, targetData = targetData)
             if (pageId != null) {
                 response.handler?.open(response.player, pageId)
             }
@@ -119,7 +123,9 @@ object ActionEngine {
         }
 
         ActionTagRegistry.register("[back]") { response ->
-            val success = GuiManager.back(response.player)
+            val clickedItem = response.item
+            val targetData = clickedItem?.style?.offlinePlayer ?: response.context?.style?.offlinePlayer
+            val success = GuiManager.back(response.player,targetData)
             if (!success) {
                 response.player.closeInventory()
             }
@@ -224,8 +230,9 @@ object ActionEngine {
 
         for (i in actions.indices) {
             val str = actions[i].trim()
-            val lowerStr = str.lowercase()
+            if (str.isEmpty()) continue
 
+            val lowerStr = str.lowercase()
             if (lowerStr.startsWith("[delay]")) {
                 val ticks = str.substring(7).trim().toLongOrNull() ?: 20L
                 val remainingActions = actions.subList(i + 1, actions.size)

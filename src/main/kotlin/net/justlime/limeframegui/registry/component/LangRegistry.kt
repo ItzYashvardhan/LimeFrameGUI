@@ -146,7 +146,7 @@ object LangRegistry : IRegistry {
 
             val args = if (argsRaw.isNotEmpty()) parseArgs(argsRaw.split("|")) else emptyMap()
 
-            val replacement = LangRegistry.getString(key, locale, args) ?: fullMatch
+            val replacement = getString(key, locale, args) ?: fullMatch
             resolvedText = resolvedText.replace(fullMatch, replacement)
         }
 

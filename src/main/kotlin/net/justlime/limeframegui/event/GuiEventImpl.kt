@@ -135,7 +135,7 @@ class GuiEventImpl(override var session: GuiSession, private val setting: GuiSet
         // Priority 4: Action Engine
         val actionId = event.item?.style?.action?.removePrefix("actions.")
         if (actionId != null) {
-            val response = ActionTagRegistryResponse(player = player, payload = "", handler = this, setting)
+            val response = ActionTagRegistryResponse(player = player, payload = "", handler = this, setting, event.item)
             ActionEngine.executePack(response, actionId, event.click)
         }
 

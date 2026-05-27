@@ -103,26 +103,26 @@ class AnvilEventImpl(
             }
         }
 
-        if (slot == AnvilGUI.Slot.INPUT_RIGHT) {
+        if (slot == AnvilGUI.Slot.INPUT_LEFT || slot == AnvilGUI.Slot.INPUT_RIGHT) {
             playCancelSound()
-            builder.onRightClickHandler?.invoke(state)
-            return Collections.singletonList(AnvilGUI.ResponseAction.close())
-        }
-
-        if (slot == AnvilGUI.Slot.INPUT_LEFT) {
-            playCancelSound()
-            builder.onLeftClickHandler?.invoke(state)
+            val isLeft = slot == AnvilGUI.Slot.INPUT_LEFT
+            val itemAction = if (isLeft) setting.leftItem.style.action else setting.rightItem.style.action
+            val callback = if (isLeft) builder.onLeftClickHandler else builder.onRightClickHandler
+            if (!itemAction.isNullOrEmpty()) {
+                val response = ActionTagRegistryResponse(player, "", null, setting)
+                ActionEngine.executePack(response, itemAction, ClickType.LEFT)
+            }
+            callback?.invoke(state)
             return Collections.singletonList(AnvilGUI.ResponseAction.close())
         }
 
         val fullInputText = state.text
         var plainLabel = MiniMessage.miniMessage().stripTags(rawLabel)
-        // Refined Regex to perfectly match valid Bukkit legacy codes only
-        plainLabel = plainLabel.replace(Regex("(?i)§[0-9a-fk-or]"), "")
-
+        plainLabel = plainLabel.replace(Regex("(?i)§[0-9a-fk-orx]"), "")
+        plainLabel = plainLabel.trim()
         val userInput = if (builder.keepLabel) {
             fullInputText
-        } else if (fullInputText.startsWith(plainLabel, ignoreCase = true) && plainLabel.isNotEmpty()) {
+        } else if (plainLabel.isNotEmpty() && fullInputText.startsWith(plainLabel, ignoreCase = true)) {
             fullInputText.removePrefix(plainLabel).trim()
         } else {
             fullInputText.replace(plainLabel, "", true).trim()
@@ -139,11 +139,16 @@ class AnvilEventImpl(
             submitAlias?.let { alias ->
                 GuiSound.playPack(player, SoundRegistry.get(alias))
             }
+
             val outputAction = setting.outPutItem.style.action
             if (!outputAction.isNullOrEmpty()) {
-                val response = ActionTagRegistryResponse(player, "", null, setting)
+                val injectedSetting = setting.clone()
+                injectedSetting.localPlaceholders = setting.localPlaceholders + mapOf("input" to userInput)
+
+                val response = ActionTagRegistryResponse(player, "", null, injectedSetting)
                 ActionEngine.executePack(response, outputAction, ClickType.LEFT)
             }
+
             builder.onOutputClickHandler?.invoke(state, userInput)
             return Collections.singletonList(AnvilGUI.ResponseAction.close())
         }
