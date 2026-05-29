@@ -11,19 +11,19 @@ object TextEngine {
     fun applyFormatTags(processedText: String, rule: TextFormatRule): String {
         val builder = StringBuilder()
 
-        // 1. Add Prefix (e.g. <gradient:blue:red> or <green>)
-        if (rule.prefix.isNotEmpty()) builder.append(rule.prefix)
+        // Add Prefix (e.g. <gradient:blue:red> or <green>)
+        if (!rule.prefix.isNullOrEmpty()) builder.append(rule.prefix)
 
-        // 2. Add Weights (e.g. <bold><underlined>)
-        for (weight in rule.weights) {
+        // Add Weights (e.g. <bold><underlined>)
+        rule.weights?.forEach { weight ->
             builder.append("<${weight.lowercase()}>")
         }
 
-        // 3. Add the actual text
+        // Add the actual text
         builder.append(processedText)
 
-        // 4. Add Suffix (e.g. </gradient>)
-        if (rule.suffix.isNotEmpty()) builder.append(rule.suffix)
+        // Add Suffix (e.g. </gradient>)
+        if (!rule.suffix.isNullOrEmpty()) builder.append(rule.suffix)
 
         return builder.toString()
     }
@@ -31,8 +31,8 @@ object TextEngine {
     /**
      * Applies casing rules to the text.
      */
-    fun applyCasing(text: String, textCase: TextCase): String {
-        if (textCase == TextCase.REGULAR) return text
+    fun applyCasing(text: String, textCase: TextCase?): String {
+        if (textCase == null || textCase == TextCase.REGULAR) return text
 
         val words = text.split(Regex("[_\\-\\s]+")).filter { it.isNotEmpty() }
         if (words.isEmpty()) return text
@@ -43,12 +43,12 @@ object TextEngine {
 
             // "epic diamond sword" -> "epic diamond sword"
             TextCase.LOWERCASE -> text.lowercase()
-            
+
             // "epic diamond sword" -> "Epic Diamond Sword"
             TextCase.TITLE_CASE -> words.joinToString(" ") { word ->
                 word.lowercase().replaceFirstChar { it.uppercase() }
             }
-            
+
             // "epic diamond sword" -> "Epic diamond sword"
             TextCase.SENTENCE_CASE -> {
                 val lower = text.lowercase()
@@ -61,8 +61,8 @@ object TextEngine {
             }.joinToString("")
 
             // "epic diamond sword" -> "EpicDiamondSword"
-            TextCase.PASCAL_CASE -> words.joinToString("") { word -> 
-                word.lowercase().replaceFirstChar { it.uppercase() } 
+            TextCase.PASCAL_CASE -> words.joinToString("") { word ->
+                word.lowercase().replaceFirstChar { it.uppercase() }
             }
 
             // "epic diamond sword" -> "epic-diamond-sword"
@@ -74,12 +74,13 @@ object TextEngine {
             TextCase.REGULAR -> text
         }
     }
+
     /**
      * Automatically inserts newlines into long strings.
-     * Intelligently ignores MiniMessage and Legacy color tags when calculating line length!
+     * Intelligently ignores MiniMessage and Legacy color tags when calculating line length
      */
-    fun applyWrap(text: String, wrapLength: Int): String {
-        if (wrapLength <= 0) return text
+    fun applyWrap(text: String, wrapLength: Int?): String {
+        if (wrapLength == null || wrapLength <= 0) return text
 
         // Regex to match MiniMessage tags <...> and Legacy tags §a, &a
         val miniMessageRegex = Regex("<[^>]*>")

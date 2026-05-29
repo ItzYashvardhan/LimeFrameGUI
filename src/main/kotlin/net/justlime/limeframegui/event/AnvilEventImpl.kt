@@ -9,8 +9,8 @@ import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.models.AnvilGuiSetting
 import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.models.TextFormatRule
-import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
 import net.justlime.limeframegui.models.registry.GuiSound
+import net.justlime.limeframegui.models.response.ActionTagRegistryResponse
 import net.justlime.limeframegui.registry.component.SoundRegistry
 import net.justlime.limeframegui.session.ItemRenderer
 import net.kyori.adventure.text.Component

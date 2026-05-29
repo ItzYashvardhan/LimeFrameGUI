@@ -1,4 +1,4 @@
-package net.justlime.limeframegui.models.registry
+package net.justlime.limeframegui.models.response
 
 import net.justlime.limeframegui.context.IContextSetting
 import net.justlime.limeframegui.event.GuiEventHandler

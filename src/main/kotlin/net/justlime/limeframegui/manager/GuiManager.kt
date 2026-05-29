@@ -10,8 +10,10 @@ import net.justlime.limeframegui.event.AnvilEventImpl
 import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.models.GuiPageTemplate
+import net.justlime.limeframegui.models.GuiState
 import net.justlime.limeframegui.models.registry.ActionBehavior
-import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
+import net.justlime.limeframegui.models.response.ActionTagRegistryResponse
+import net.justlime.limeframegui.models.response.ListPopulatorResponse
 import net.justlime.limeframegui.registry.gui.ListPopulatorRegistry
 import net.justlime.limeframegui.registry.gui.PageRegistry
 import net.justlime.limeframegui.registry.input.InputRegistry
@@ -30,8 +32,8 @@ import kotlin.collections.ArrayDeque
  */
 object GuiManager {
 
-    private val playerHistory = mutableMapOf<UUID, ArrayDeque<String>>()
-    private val currentGui = mutableMapOf<UUID, String>()
+    private val playerHistory = mutableMapOf<UUID, ArrayDeque<GuiState>>()
+    private val currentGui = mutableMapOf<UUID, GuiState>()
 
     /**
      * Opens an Anvil Input GUI.
@@ -57,10 +59,10 @@ object GuiManager {
         }
 
         val currentlyOpen = currentGui[player.uniqueId]
-        if (currentlyOpen != null && !currentlyOpen.startsWith("input:")) {
+        if (currentlyOpen != null && !currentlyOpen.id.startsWith("input:")) {
             playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
         }
-        currentGui[player.uniqueId] = "input:$inputId"
+        currentGui[player.uniqueId] = GuiState("input:$inputId", context.style.offlinePlayer)
 
         val builder = AnvilGuiBuilder(setting)
 
@@ -75,13 +77,12 @@ object GuiManager {
 
         builder.onClose { closedPlayer ->
 
-            if (currentGui[closedPlayer.uniqueId] == "input:$inputId") {
-                val targetData = context.style.offlinePlayer
+            if (currentGui[closedPlayer.uniqueId]?.id == "input:$inputId") {
                 if (FoliaLibHook.isInitialized()) {
-                    FoliaLibHook.foliaLib.scheduler.runNextTick { back(closedPlayer,targetData) }
+                    FoliaLibHook.foliaLib.scheduler.runNextTick { back(closedPlayer) }
                 } else {
                     Bukkit.getScheduler().runTaskLater(LimeFrameAPI.getPlugin(), Runnable {
-                        back(closedPlayer,targetData)
+                        back(closedPlayer)
                     }, 1L)
                 }
             }
@@ -103,18 +104,16 @@ object GuiManager {
             ActionEngine.executeBehavior(response, template.setting.denyBehavior)
             return false
         }
-
-        if (recordHistory) {
-            val currentlyOpen = currentGui[player.uniqueId]
-            if (currentlyOpen != null && currentlyOpen != guiId) {
-                playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
-            }
-        }
-        currentGui[player.uniqueId] = guiId
-
         val updatedStyle = template.setting.style.copy(
             offlinePlayer = targetData ?: template.setting.style.offlinePlayer ?: template.setting.style.viewer
         )
+        if (recordHistory) {
+            val currentlyOpen = currentGui[player.uniqueId]
+            if (currentlyOpen != null && currentlyOpen.id != guiId) {
+                playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
+            }
+        }
+        currentGui[player.uniqueId] = GuiState(guiId, updatedStyle.offlinePlayer)
 
         val resolvedTitle = TextResolver.resolve(player, template.setting.title, template.setting, updatedStyle)
 
@@ -176,7 +175,7 @@ object GuiManager {
                     // Normal Static Item
                     val playerItem = templateItem.clone()
                     playerItem.style.offlinePlayer = localizedSetting.style.offlinePlayer
-                    if (playerItem.style.offlinePlayer == null){
+                    if (playerItem.style.offlinePlayer == null) {
                         playerItem.style.viewer = player
                     }
                     setItem(playerItem) { event -> playerItem.onClick(event) }
@@ -184,7 +183,8 @@ object GuiManager {
             }
 
             template.dynamicMask?.let { mask ->
-                val populatedItems = ListPopulatorRegistry.getItems(mask.populatorId, player, mask)
+                val response = ListPopulatorResponse(player, mask, localizedSetting)
+                val populatedItems = ListPopulatorRegistry.getItems(mask.populatorId, response)
                 addPage {
                     populatedItems.forEach { item ->
                         addItem(item) { event -> item.onClick(event) }
@@ -198,10 +198,10 @@ object GuiManager {
     /**
      * Navigates the player back to their previous GUI.
      */
-    fun back(player: Player,targetData: OfflinePlayer?): Boolean {
+    fun back(player: Player): Boolean {
         val history = playerHistory[player.uniqueId] ?: return false
-        val previousGuiId = history.removeLastOrNull() ?: return false
-        return open(player, previousGuiId, recordHistory = false,targetData)
+        val previousState = history.removeLastOrNull() ?: return false
+        return open(player, previousState.id, recordHistory = false, targetData = previousState.targetData)
     }
 
     /**

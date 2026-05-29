@@ -54,7 +54,8 @@ object GuiConfigHandler {
                 meta.setCustomModelData(section.getInt(keys.model))
             }
 
-            val flags = section.getStringList(keys.flags).mapNotNull { runCatching { ItemFlag.valueOf(it) }.getOrNull() }
+            val flags =
+                section.getStringList(keys.flags).mapNotNull { runCatching { ItemFlag.valueOf(it) }.getOrNull() }
             if (flags.isNotEmpty()) {
                 meta.addItemFlags(*flags.toTypedArray())
             }
@@ -103,21 +104,22 @@ object GuiConfigHandler {
             style = GuiStyleSheet(
                 textSettings = GuiTextSettings(
                     name = section.getConfigurationSection(keys.textSection)?.let { textSec ->
-                        val rule = TextFormatRule(font = keys.stylishName)
+                        val rule = TextFormatRule()
                         TemplateCompiler.parseTextGroupRule(textSec, "name", rule, keys)
                         rule
-                    } ?: GuiTextSettings().name,
+                    } ?: TextFormatRule(),
                     lore = section.getConfigurationSection(keys.textSection)?.let { textSec ->
-                        val rule = TextFormatRule(font = keys.stylishLore)
+                        val rule = TextFormatRule()
                         TemplateCompiler.parseTextGroupRule(textSec, "lore", rule, keys)
                         rule
-                    } ?: GuiTextSettings().lore
+                    } ?: TextFormatRule()
                 ),
                 clickSoundAlias = soundAlias,
                 action = parsedAction
             )
         )
     }
+
     /**
      * Loops through a parent configuration block to parse multiple items simultaneously.
      */
@@ -198,11 +200,14 @@ object GuiConfigHandler {
             outPutItem = outputItem,
 
             // Sounds are typically at the root or main depending on your config, this checks the root!
-            openSoundAlias = section.getString(keys.stylishOpenSound) ?: section.getStringList(keys.stylishOpenSound).firstOrNull(),
-            cancelSoundAlias = section.getString(keys.anvilCancelSound) ?: section.getStringList(keys.anvilCancelSound).firstOrNull(),
-            submitSoundAlias = section.getString(keys.anvilSubmitSound) ?: section.getStringList(keys.anvilSubmitSound).firstOrNull(),
+            openSoundAlias = section.getString(keys.stylishOpenSound) ?: section.getStringList(keys.stylishOpenSound)
+                .firstOrNull(),
+            cancelSoundAlias = section.getString(keys.anvilCancelSound) ?: section.getStringList(keys.anvilCancelSound)
+                .firstOrNull(),
+            submitSoundAlias = section.getString(keys.anvilSubmitSound) ?: section.getStringList(keys.anvilSubmitSound)
+                .firstOrNull(),
 
-            style = GuiStyleSheet() // TemplateCompiler will handle textSettings
+            style = GuiStyleSheet()
         )
     }
 
@@ -260,7 +265,8 @@ object GuiConfigHandler {
                     if (meta.hasEnchantmentGlintOverride()) {
                         section.set(keys.glow, meta.enchantmentGlintOverride)
                     }
-                } catch (_: NoSuchMethodError) {}
+                } catch (_: NoSuchMethodError) {
+                }
             }
 
             if (meta.itemFlags.isNotEmpty()) {
@@ -403,12 +409,12 @@ object GuiConfigHandler {
     private fun writeRule(textSec: ConfigurationSection, path: String, rule: TextFormatRule) {
         val sub = textSec.createSection(path)
         sub.set(keys.textFont, rule.font)
-        if (rule.prefix.isNotEmpty()) sub.set(keys.textPrefix, rule.prefix)
-        if (rule.suffix.isNotEmpty()) sub.set(keys.textSuffix, rule.suffix)
+        if (rule.prefix?.isNotEmpty() == true) sub.set(keys.textPrefix, rule.prefix)
+        if (rule.suffix?.isNotEmpty() == true) sub.set(keys.textSuffix, rule.suffix)
         if (rule.wrapLength != -1) sub.set(keys.textWrapLength, rule.wrapLength)
-        if (rule.weights.isNotEmpty()) sub.set(keys.textWeight, rule.weights)
+        if (rule.weights?.isNotEmpty() == true) sub.set(keys.textWeight, rule.weights)
         if (rule.textCase != net.justlime.limeframegui.enums.TextCase.REGULAR) {
-            sub.set(keys.textCase, rule.textCase.name.lowercase().replace("_", "-"))
+            sub.set(keys.textCase, rule.textCase?.name?.lowercase()?.replace("_", "-"))
         }
     }
 
@@ -417,17 +423,18 @@ object GuiConfigHandler {
             val rule = TextFormatRule(font = keys.stylishTitle)
             TemplateCompiler.parseTextGroupRule(textSec, "title", rule, keys)
             rule
-        } ?: GuiTextSettings().title,
+        } ?: TextFormatRule(font = keys.stylishTitle),
+
         name = section.getConfigurationSection(keys.textSection)?.let { textSec ->
             val rule = TextFormatRule(font = keys.stylishName)
             TemplateCompiler.parseTextGroupRule(textSec, "name", rule, keys)
             rule
-        } ?: GuiTextSettings().name,
+        } ?: TextFormatRule(font = keys.stylishName),
         lore = section.getConfigurationSection(keys.textSection)?.let { textSec ->
             val rule = TextFormatRule(font = keys.stylishLore)
             TemplateCompiler.parseTextGroupRule(textSec, "lore", rule, keys)
             rule
-        } ?: GuiTextSettings().lore
+        } ?: TextFormatRule(font = keys.stylishLore)
     )
 
 }

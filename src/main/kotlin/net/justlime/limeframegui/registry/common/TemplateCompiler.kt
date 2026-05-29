@@ -168,19 +168,27 @@ object TemplateCompiler {
         if (sec.contains(keys.textFont)) {
             targetRule.font = sec.getBoolean(keys.textFont)
         }
+
         if (sec.contains(keys.textPrefix)) {
-            targetRule.prefix = sec.getString(keys.textPrefix) ?: targetRule.prefix
+            targetRule.prefix = sec.getString(keys.textPrefix)
         }
+
         if (sec.contains(keys.textSuffix)) {
-            targetRule.suffix = sec.getString(keys.textSuffix) ?: targetRule.suffix
+            targetRule.suffix = sec.getString(keys.textSuffix)
         }
+
         if (sec.contains(keys.textWrapLength)) {
-            targetRule.wrapLength = sec.getInt(keys.textWrapLength, targetRule.wrapLength)
+            targetRule.wrapLength = sec.getInt(keys.textWrapLength)
         }
+
         if (sec.contains(keys.textWeight)) {
-            targetRule.weights = if (sec.isList(keys.textWeight)) sec.getStringList(keys.textWeight)
-            else listOf(sec.getString(keys.textWeight)!!)
+            targetRule.weights = if (sec.isList(keys.textWeight)) {
+                sec.getStringList(keys.textWeight)
+            } else {
+                sec.getString(keys.textWeight)?.let { listOf(it) }
+            }
         }
+
         if (sec.contains(keys.textCase)) {
             val caseStr = sec.getString(keys.textCase)?.replace("-", "_")?.uppercase()
             if (caseStr != null) {

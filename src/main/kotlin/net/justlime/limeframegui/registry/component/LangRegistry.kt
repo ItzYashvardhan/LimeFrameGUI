@@ -125,19 +125,18 @@ object LangRegistry : IRegistry {
      * Parses GUI configuration strings dynamically, resolving `{lang:key|args}` syntax
      * into compiled localized text at runtime.
      */
-    fun resolveLangString(player: Player,text: String, locale: String): String {
-        // Direct Lang Mapping (e.g. `name: "lang.dialog_title"`)
+    fun resolveLangString(player: Player, text: String, locale: String): String {
+        // Direct Lang Mapping (e.g. `name: "lang.example_title"`)
         if (text.startsWith("lang.") || text.startsWith("lang:")) {
             val stripped = text.substring(5)
             val parts = stripped.split("|")
             val key = parts[0]
             val args = parseArgs(parts.drop(1))
 
-            val result = getString(key, locale, args) ?: text
-            return PlaceholderRegistry.resolve(result) // 🌟 FIX 3: Catch direct lang mapping
+            return getString(key, locale, args) ?: text
         }
 
-        // Inline Lang Mapping (e.g. `name: "Welcome to {lang:title} GUI!"`)
+        // Inline Lang Mapping (e.g. `name: "Welcome to {lang:example_title} GUI!"`)
         var resolvedText = text
         langRegex.findAll(text).forEach { match ->
             val fullMatch = match.value
@@ -150,8 +149,7 @@ object LangRegistry : IRegistry {
             resolvedText = resolvedText.replace(fullMatch, replacement)
         }
 
-        // This ensures `name: "{cmd.team} GUI"` gets resolved perfectly.
-        return PlaceholderRegistry.resolve(resolvedText,player=player)
+        return resolvedText
     }
 
     /**

@@ -4,8 +4,8 @@ import net.justlime.limeframegui.engine.ActionEngine
 import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.models.GuiSetting
-import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
 import net.justlime.limeframegui.models.registry.GuiSound
+import net.justlime.limeframegui.models.response.ActionTagRegistryResponse
 import net.justlime.limeframegui.registry.component.SoundRegistry
 import net.justlime.limeframegui.session.GuiSession
 import net.justlime.limeframegui.util.FrameAdapter

@@ -31,19 +31,19 @@ object TextResolver {
             setting.localPlaceholders
         }
 
-        // Step 1: Resolve Lang files
+        // Resolve Lang files
         resolved = LangRegistry.resolveLangString(player, resolved, player.locale)
 
 
 
-        // Step 2: Resolve Placeholders with the merged map
+        // Resolve Placeholders with the merged map
         if (resolved.contains("{player}")) {
             val targetName = targetOfflinePlayer?.name ?: player.name
-            resolved = resolved.replace("{player}", targetName ?: "")
+            resolved = resolved.replace("{player}", targetName)
         }
-        resolved = PlaceholderRegistry.resolve(resolved, mergedPlaceholders, player)
+        resolved = PlaceholderRegistry.resolve(resolved, mergedPlaceholders, player,targetOfflinePlayer)
 
-        // Step 3: Resolve Session Variables
+        // Resolve Session Variables
         if (resolved.contains("{var:")) {
             resolved = varRegex.replace(resolved) { match ->
                 val variableName = match.groupValues[1]

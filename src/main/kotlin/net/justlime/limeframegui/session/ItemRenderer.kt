@@ -3,8 +3,10 @@ package net.justlime.limeframegui.session
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.context.IContextSetting
 import net.justlime.limeframegui.engine.TextResolver
+import net.justlime.limeframegui.enums.TextCase
 import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.GuiStyleSheet
+import net.justlime.limeframegui.models.TextFormatRule
 import net.justlime.limeframegui.util.SkullUtils
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.SkullMeta
@@ -47,9 +49,33 @@ object ItemRenderer {
      * Item-level properties strictly override session-level defaults.
      */
     private fun mergeContexts(base: GuiStyleSheet, override: GuiStyleSheet): GuiStyleSheet {
+
+        val mergedNameRule = TextFormatRule(
+            font = override.textSettings.name.font ?: base.textSettings.name.font ?: false,
+            weights = override.textSettings.name.weights ?: base.textSettings.name.weights ?: emptyList(),
+            textCase = override.textSettings.name.textCase ?: base.textSettings.name.textCase ?: TextCase.REGULAR,
+            prefix = override.textSettings.name.prefix ?: base.textSettings.name.prefix ?: "",
+            suffix = override.textSettings.name.suffix ?: base.textSettings.name.suffix ?: "",
+            wrapLength = override.textSettings.name.wrapLength ?: base.textSettings.name.wrapLength ?: -1
+        )
+
+        val mergedLoreRule = TextFormatRule(
+            font = override.textSettings.lore.font ?: base.textSettings.lore.font ?: false,
+            weights = override.textSettings.lore.weights ?: base.textSettings.lore.weights ?: emptyList(),
+            textCase = override.textSettings.lore.textCase ?: base.textSettings.lore.textCase ?: TextCase.REGULAR,
+            prefix = override.textSettings.lore.prefix ?: base.textSettings.lore.prefix ?: "",
+            suffix = override.textSettings.lore.suffix ?: base.textSettings.lore.suffix ?: "",
+            wrapLength = override.textSettings.lore.wrapLength ?: base.textSettings.lore.wrapLength ?: -1
+        )
+
+        val mergedTextSettings = base.textSettings.clone().apply {
+            this.name = mergedNameRule
+            this.lore = mergedLoreRule
+        }
+
         return base.copy(
             placeholder = (base.placeholder + override.placeholder).toMutableMap(),
-            textSettings = base.textSettings.clone(),
+            textSettings = mergedTextSettings,
             offlinePlayer = override.offlinePlayer ?: base.offlinePlayer,
             viewer = override.viewer ?: base.viewer
         )

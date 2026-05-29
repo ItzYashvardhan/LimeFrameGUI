@@ -1,9 +1,6 @@
 package net.justlime.limeframegui.engine
 
-import net.justlime.limeframegui.context.IContextSetting
-import net.justlime.limeframegui.event.GuiEventHandler
-import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
-import org.bukkit.entity.Player
+import net.justlime.limeframegui.models.response.ActionTagRegistryResponse
 
 /**
  * The functional interface for handling action tags.

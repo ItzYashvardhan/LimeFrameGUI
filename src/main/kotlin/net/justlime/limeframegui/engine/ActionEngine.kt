@@ -5,11 +5,10 @@ import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.manager.GuiManager
-import net.justlime.limeframegui.models.GuiItem
 import net.justlime.limeframegui.models.registry.ActionBehavior
-import net.justlime.limeframegui.models.registry.ActionTagRegistryResponse
 import net.justlime.limeframegui.models.registry.GuiActionPack
 import net.justlime.limeframegui.models.registry.GuiSound
+import net.justlime.limeframegui.models.response.ActionTagRegistryResponse
 import net.justlime.limeframegui.registry.ButtonRegistry
 import net.justlime.limeframegui.registry.component.ActionRegistry
 import net.justlime.limeframegui.registry.component.ActionTagRegistry
@@ -123,9 +122,7 @@ object ActionEngine {
         }
 
         ActionTagRegistry.register("[back]") { response ->
-            val clickedItem = response.item
-            val targetData = clickedItem?.style?.offlinePlayer ?: response.context?.style?.offlinePlayer
-            val success = GuiManager.back(response.player,targetData)
+            val success = GuiManager.back(response.player)
             if (!success) {
                 response.player.closeInventory()
             }
