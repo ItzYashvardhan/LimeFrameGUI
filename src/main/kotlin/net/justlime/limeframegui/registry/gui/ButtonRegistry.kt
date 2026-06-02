@@ -1,4 +1,4 @@
-package net.justlime.limeframegui.registry
+package net.justlime.limeframegui.registry.gui
 
 import net.justlime.limeframegui.event.GuiEventHandler
 import org.bukkit.entity.Player

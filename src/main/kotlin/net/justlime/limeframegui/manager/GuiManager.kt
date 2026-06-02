@@ -11,6 +11,7 @@ import net.justlime.limeframegui.integration.FoliaLibHook
 import net.justlime.limeframegui.menu.ChestGUI
 import net.justlime.limeframegui.models.GuiPageTemplate
 import net.justlime.limeframegui.models.GuiState
+import net.justlime.limeframegui.models.TargetData
 import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.response.ActionTagRegistryResponse
 import net.justlime.limeframegui.models.response.ListPopulatorResponse
@@ -19,7 +20,6 @@ import net.justlime.limeframegui.registry.gui.PageRegistry
 import net.justlime.limeframegui.registry.input.InputRegistry
 import org.bukkit.Bukkit
 import org.bukkit.Material
-import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
 import java.util.UUID
 import kotlin.collections.ArrayDeque
@@ -42,14 +42,26 @@ object GuiManager {
      * @param commandRaw The raw payload from the Action tag (e.g., "team {input}").
      * @param context The Context (IContextSetting) of the parent Chest GUI they clicked from.
      */
-    fun openInput(player: Player, inputId: String, commandRaw: String, context: IContextSetting): Boolean {
+    fun openInput(
+        player: Player,
+        inputId: String,
+        commandRaw: String,
+        context: IContextSetting,
+        targetData: TargetData? = null // <-- Standardized!
+    ): Boolean {
         val setting = InputRegistry.get(inputId)?.clone() ?: run {
             println("[LimeFrameGUI] Error: Attempted to open unknown input '$inputId'")
             return false
         }
 
+        // Standardize TargetData extraction
+        val offlinePlayer = targetData?.player ?: context.style.offlinePlayer ?: player
+        val forwardedPlaceholders = targetData?.forwardedPlaceholder ?: emptyMap()
+        val finalTargetData = TargetData(offlinePlayer, forwardedPlaceholders)
+
         setting.localVariables = context.localVariables + setting.localVariables
-        setting.localPlaceholders = context.localPlaceholders + setting.localPlaceholders
+        // Inject forwarded placeholders
+        setting.localPlaceholders = context.localPlaceholders + forwardedPlaceholders + setting.localPlaceholders
 
         val resolvedReqs = TextResolver.resolveList(player, setting.openRequirements, setting)
         if (!ConditionEngine.checkRequirements(player, resolvedReqs)) {
@@ -58,25 +70,21 @@ object GuiManager {
             return false
         }
 
-        val currentlyOpen = currentGui[player.uniqueId]
-        if (currentlyOpen != null && !currentlyOpen.id.startsWith("input:")) {
-            playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
-        }
-        currentGui[player.uniqueId] = GuiState("input:$inputId", context.style.offlinePlayer)
+        updateHistoryAndState(player, "input:$inputId", finalTargetData)
 
         val builder = AnvilGuiBuilder(setting)
 
         builder.onConfirmClick { state, userInput ->
             if (userInput.isNotBlank()) {
                 val finalCommand = commandRaw.replace("{input}", userInput)
-                val response = ActionTagRegistryResponse(player, finalCommand, null, context)
+                // Use the merged 'setting' here so the command resolves {warp_name}
+                val response = ActionTagRegistryResponse(player, finalCommand, null, setting)
                 val behavior = ActionBehavior.Simple(listOf(finalCommand))
                 ActionEngine.executeBehavior(response, behavior)
             }
         }
 
         builder.onClose { closedPlayer ->
-
             if (currentGui[closedPlayer.uniqueId]?.id == "input:$inputId") {
                 if (FoliaLibHook.isInitialized()) {
                     FoliaLibHook.foliaLib.scheduler.runNextTick { back(closedPlayer) }
@@ -91,8 +99,7 @@ object GuiManager {
         AnvilEventImpl(player, setting, builder).open()
         return true
     }
-
-    fun open(player: Player, guiId: String, recordHistory: Boolean = true, targetData: OfflinePlayer? = null): Boolean {
+    fun open(player: Player, guiId: String, recordHistory: Boolean = true, targetData: TargetData? = null): Boolean {
         val template: GuiPageTemplate = PageRegistry.get(guiId) ?: run {
             println("[LimeFrameGUI] Error: Attempted to open unknown page '$guiId'")
             return false
@@ -104,22 +111,24 @@ object GuiManager {
             ActionEngine.executeBehavior(response, template.setting.denyBehavior)
             return false
         }
+
+        val offlinePlayer = targetData?.player ?: template.setting.style.offlinePlayer ?: player
+        val forwardedPlaceholders = targetData?.forwardedPlaceholder ?: emptyMap()
+
         val updatedStyle = template.setting.style.copy(
-            offlinePlayer = targetData ?: template.setting.style.offlinePlayer ?: template.setting.style.viewer
+            offlinePlayer = offlinePlayer
         )
-        if (recordHistory) {
-            val currentlyOpen = currentGui[player.uniqueId]
-            if (currentlyOpen != null && currentlyOpen.id != guiId) {
-                playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
-            }
-        }
-        currentGui[player.uniqueId] = GuiState(guiId, updatedStyle.offlinePlayer)
 
-        val resolvedTitle = TextResolver.resolve(player, template.setting.title, template.setting, updatedStyle)
+        updateHistoryAndState(player, guiId, TargetData(offlinePlayer, forwardedPlaceholders), recordHistory)
 
-        val localizedSetting = template.setting.copy(
-            title = resolvedTitle, style = updatedStyle
+        val mergedPlaceholders = template.setting.localPlaceholders + forwardedPlaceholders
+        val tempSetting = template.setting.copy(localPlaceholders = mergedPlaceholders)
+        val resolvedTitle = TextResolver.resolve(player, template.setting.title, tempSetting, updatedStyle)
+        val localizedSetting = tempSetting.copy(
+            title = resolvedTitle,
+            style = updatedStyle
         )
+        localizedSetting.localPlaceholders = forwardedPlaceholders + localizedSetting.localPlaceholders
 
         ChestGUI(localizedSetting) {
             onClick { it.isCancelled = true }
@@ -210,5 +219,15 @@ object GuiManager {
     fun clearHistory(uniqueId: UUID) {
         playerHistory.remove(uniqueId)
         currentGui.remove(uniqueId)
+    }
+
+    private fun updateHistoryAndState(player: Player, newGuiId: String, targetData: TargetData, recordHistory: Boolean = true) {
+        if (recordHistory) {
+            val currentlyOpen = currentGui[player.uniqueId]
+            if (currentlyOpen != null && currentlyOpen.id != newGuiId) {
+                playerHistory.getOrPut(player.uniqueId) { ArrayDeque() }.addLast(currentlyOpen)
+            }
+        }
+        currentGui[player.uniqueId] = GuiState(newGuiId, targetData)
     }
 }

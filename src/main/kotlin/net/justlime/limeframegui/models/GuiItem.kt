@@ -44,7 +44,7 @@ data class GuiItem(
     //Click Handling
     var onClick: (InventoryClickEvent) -> Unit = {}
 ) {
-    constructor(material: Material, name: String, lore: List<String> = mutableListOf()) : this(
+    constructor(material: Material, name: String = "", lore: List<String> = mutableListOf()) : this(
         baseItem = ItemStack(material),
         name = name,
         lore = lore

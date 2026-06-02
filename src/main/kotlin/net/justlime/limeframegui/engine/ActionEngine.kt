@@ -5,11 +5,12 @@ import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.color.FontStyle
 import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.manager.GuiManager
+import net.justlime.limeframegui.models.TargetData
 import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.registry.GuiActionPack
 import net.justlime.limeframegui.models.registry.GuiSound
 import net.justlime.limeframegui.models.response.ActionTagRegistryResponse
-import net.justlime.limeframegui.registry.ButtonRegistry
+import net.justlime.limeframegui.registry.gui.ButtonRegistry
 import net.justlime.limeframegui.registry.component.ActionRegistry
 import net.justlime.limeframegui.registry.component.ActionTagRegistry
 import net.justlime.limeframegui.registry.component.SoundRegistry
@@ -23,7 +24,7 @@ object ActionEngine {
     init {
         ActionTagRegistry.register("[message]") { response ->
             val text = response.context?.let {
-                TextResolver.resolve(response.player, response.payload, it)
+                TextResolver.resolve(response.player, response.payload, it, response.item?.style)
             } ?: response.payload
             val coloredText =
                 FontStyle.miniMessage?.legacyToMini(text) ?: ChatColor.translateAlternateColorCodes('&', text)
@@ -36,7 +37,7 @@ object ActionEngine {
 
         ActionTagRegistry.register("[console]") { response ->
             var cmd = response.context?.let {
-                TextResolver.resolve(response.player, response.payload, it)
+                TextResolver.resolve(response.player, response.payload, it, response.item?.style)
             } ?: response.payload
 
             cmd = cmd.replace("{player}", response.player.name)
@@ -45,7 +46,7 @@ object ActionEngine {
 
         ActionTagRegistry.register("[player]") { response ->
             var cmd = response.context?.let {
-                TextResolver.resolve(response.player, response.payload, it)
+                TextResolver.resolve(response.player, response.payload, it, response.item?.style)
             } ?: response.payload
 
             cmd = cmd.replace("{player}", response.player.name)
@@ -68,8 +69,16 @@ object ActionEngine {
             if (match != null) {
                 val inputId = match.groupValues[1].replace("'", "").replace("\"", "")
                 val rawCommand = match.groupValues[2]
+
+                // Build TargetData
+                val clickedItem = response.item
+                val style = clickedItem?.style
+                val targetPlayer = style?.offlinePlayer ?: response.context.style.offlinePlayer ?: response.player
+                val forwardedPlaceholders = style?.placeholder ?: response.context.localPlaceholders
+                val targetData = TargetData(targetPlayer, forwardedPlaceholders)
+
                 response.player.closeInventory()
-                GuiManager.openInput(response.player, inputId, rawCommand, response.context)
+                GuiManager.openInput(response.player, inputId, rawCommand, response.context, targetData)
             } else {
                 Bukkit.getLogger().warning("[LimeFrameGUI] Invalid [input] syntax: '${response.payload}'")
             }
@@ -97,7 +106,11 @@ object ActionEngine {
             val guiId = parts[0]
             val pageId = parts.getOrNull(1)?.toIntOrNull()
             val clickedItem = response.item
-            val targetData = clickedItem?.style?.offlinePlayer ?: response.context?.style?.offlinePlayer
+            val targetPlayer =
+                clickedItem?.style?.offlinePlayer ?: response.context?.style?.offlinePlayer ?: response.player
+            val forwardedPlaceholders =
+                clickedItem?.style?.placeholder ?: response.context?.localPlaceholders ?: emptyMap()
+            val targetData = TargetData(targetPlayer, forwardedPlaceholders)
 
             GuiManager.open(response.player, guiId, targetData = targetData)
             if (pageId != null) {
@@ -199,7 +212,7 @@ object ActionEngine {
                 // 1. Resolve target value using the TextResolver pipeline
                 val rawPlaceholder = behavior.valuePlaceholder
                 var resolvedValue = if (response.context != null) {
-                    TextResolver.resolve(response.player, rawPlaceholder, response.context)
+                    TextResolver.resolve(response.player, rawPlaceholder, response.context, response.item?.style)
                 } else {
                     val fallback = rawPlaceholder.replace("{", "%").replace("}", "%")
                     if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
@@ -262,6 +275,10 @@ object ActionEngine {
     private fun runCustomJavaCode(player: Player, identifier: String, gui: GuiEventHandler?) {
         if (gui == null) {
             println("[LimeFrameGUI] Warning: Attempted to run Java code '$identifier' outside of a GUI context.")
+            return
+        }
+
+        if (identifier == "core_next_page" || identifier == "core_prev_page") {
             return
         }
 
