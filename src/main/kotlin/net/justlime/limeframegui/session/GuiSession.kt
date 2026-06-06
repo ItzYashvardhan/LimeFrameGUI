@@ -115,17 +115,24 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         }
     }
 
+
     fun softRefresh() {
         PerformanceMonitor.measure("SOFT REFRESH PAGES") {
             val currentPageId = builder.session.handler.getCurrentPage(viewer) ?: 0
             if (LimeFrameAPI.debugging) println("Soft Refresh PageId used $currentPageId")
 
+            // Re-render, but tell it to REUSE the existing Bukkit Inventory objects!
             if (buffer != null) {
-                renderBufferPages(currentPageId)
+                renderBufferPages(currentPageId, reuseExisting = true)
             } else {
                 builder.pages.forEach { (pageId, guiPage) ->
-                    renderPage(pageId, guiPage)
+                    renderPage(pageId, guiPage, reuseExisting = true)
                 }
+            }
+
+            // Restart observers in case new animated items were added by view-requirements
+            handler.pageInventories[currentPageId]?.let { activeInv ->
+                startStateObserver(currentPageId, activeInv)
             }
         }
     }
@@ -134,29 +141,28 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         PerformanceMonitor.measure("REFRESH PAGES") {
             val currentPageId = builder.session.handler.getCurrentPage(viewer) ?: 0
             if (LimeFrameAPI.debugging) println("Refresh PageId used $currentPageId")
+
+            // Re-render from scratch (Creates new Inventory objects)
             if (buffer == null) {
                 builder.pages.forEach { (pageId, guiPage) ->
-                    renderPage(pageId, guiPage)
+                    renderPage(pageId, guiPage, reuseExisting = false)
                 }
-                return
+            } else {
+                renderBufferPages(currentPageId, reuseExisting = false)
             }
-            renderBufferPages(currentPageId)
+
+            // Actually push the new inventory to the player's screen!
             handler.open(viewer, currentPageId)
-        }
-    }
 
-    private fun renderRange(range: IntRange, allPageIds: List<Int>) {
-        if (range.first > range.last) return
-        range.forEach { index ->
-            val id = allPageIds[index]
-            val guiPage = builder.pages[id] ?: return@forEach
-            if (!guiPage.isRendered) {
-                renderPage(id, guiPage)
+            // Restart observers for the new inventory
+            handler.pageInventories[currentPageId]?.let { activeInv ->
+                startStateObserver(currentPageId, activeInv)
             }
         }
     }
 
-    private fun renderBufferPages(finalPageId: Int) {
+    // Added reuseExisting parameter
+    private fun renderBufferPages(finalPageId: Int, reuseExisting: Boolean = false) {
         val currentBuffer = buffer ?: return
         val pagesToRender = mutableSetOf<Int>()
         pagesToRender.add(ChestGUI.GLOBAL_PAGE_ID)
@@ -176,19 +182,26 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
 
         pagesToRender.forEach { pageId ->
             builder.pages[pageId]?.let { guiPage ->
-                renderPage(pageId, guiPage)
+                renderPage(pageId, guiPage, reuseExisting)
             }
         }
     }
 
-    private fun renderPage(pageId: Int, guiPage: GuiPage) {
-        val styledInventory = createStylishInventory(pageId)
+    // Added reuseExisting parameter
+    private fun renderPage(pageId: Int, guiPage: GuiPage, reuseExisting: Boolean = false) {
 
-        // Helper to check requirements with full TextResolver context!
+        // FIX: If soft-refreshing, grab the existing inventory and clear it so we don't break the handler
+        val existingInv = handler.pageInventories[pageId]
+        val styledInventory = if (reuseExisting && existingInv != null) {
+            existingInv.clear()
+            existingInv
+        } else {
+            createStylishInventory(pageId)
+        }
+
         fun getValidItem(items: List<GuiItem>): GuiItem? {
             return items.sortedByDescending { it.priority }
                 .firstOrNull { item ->
-                    // 🌟 THIS IS THE FIX: Resolve variables/PAPI before checking the condition!
                     val resolvedReqs = TextResolver.resolveList(viewer, item.viewRequirements, blueprint.setting)
                     ConditionEngine.checkRequirements(viewer, resolvedReqs)
                 }
@@ -220,15 +233,26 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
             }
         }
 
+        // 3. Save it back to the handler
         handler.pageInventories[pageId] = styledInventory
         guiPage.inventory = styledInventory
         guiPage.isRendered = true
     }
-
     private fun createStylishInventory(pageId: Int): Inventory {
         val styledTitle = generateTitle(blueprint.setting.title, pageId)
         val size = blueprint.setting.rows * 9
         return Bukkit.createInventory(handler, size, styledTitle)
+    }
+
+    private fun renderRange(range: IntRange, allPageIds: List<Int>) {
+        if (range.first > range.last) return
+        range.forEach { index ->
+            val id = allPageIds[index]
+            val guiPage = builder.pages[id] ?: return@forEach
+            if (!guiPage.isRendered) {
+                renderPage(id, guiPage)
+            }
+        }
     }
 
     private fun generateTitle(rawTitle: String, pageId: Int): String {

@@ -1,17 +1,12 @@
 package net.justlime.limeframegui.config
 
 import net.justlime.limeframegui.api.LimeFrameAPI
-import net.justlime.limeframegui.registry.component.ActionRegistry
-import net.justlime.limeframegui.registry.component.FontRegistry
-import net.justlime.limeframegui.registry.component.ItemRegistry
-import net.justlime.limeframegui.registry.component.LangRegistry
-import net.justlime.limeframegui.registry.component.PlaceholderRegistry
-import net.justlime.limeframegui.registry.component.SoundRegistry
-import net.justlime.limeframegui.registry.component.TextureRegistry
-import net.justlime.limeframegui.registry.gui.PageRegistry
 import net.justlime.limeframegui.registry.common.TemplateCompiler
 import net.justlime.limeframegui.registry.common.TemplateRegistry
+import net.justlime.limeframegui.registry.component.*
+import net.justlime.limeframegui.registry.gui.PageRegistry
 import net.justlime.limeframegui.registry.input.InputRegistry
+import net.justlime.limeframegui.util.ConfigErrorHandler
 import net.justlime.limeframegui.util.extractDefaultsFromJar
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
@@ -24,6 +19,8 @@ import java.io.File
  */
 object GuiDirectoryHandler {
 
+    lateinit var plugin: JavaPlugin
+
     /**
      * Initializes the directory structure, extracts default files if missing,
      * and sequentially executes the loading phases.
@@ -32,6 +29,7 @@ object GuiDirectoryHandler {
      * @param baseDir The root folder name for GUI configurations.
      */
     fun loadAll(plugin: JavaPlugin, baseDir: String = "gui") {
+        this.plugin = plugin
         val guiFolder = File(plugin.dataFolder, baseDir)
         if (!guiFolder.exists()) guiFolder.mkdirs()
         extractDefaultsFromJar(plugin, baseDir)
@@ -49,7 +47,11 @@ object GuiDirectoryHandler {
         if (!componentsFolder.exists()) componentsFolder.mkdirs()
         val placeholderFile = File(componentsFolder, "placeholders.yml")
         if (placeholderFile.exists()) {
-            PlaceholderRegistry.load(YamlFileHandler(placeholderFile).config)
+            try {
+                PlaceholderRegistry.load(YamlFileHandler(placeholderFile).config)
+            } catch (e: Exception) {
+                ConfigErrorHandler.printFriendlyError(plugin.logger, placeholderFile, e)
+            }
         } else PlaceholderRegistry.clear()
     }
 
@@ -61,9 +63,12 @@ object GuiDirectoryHandler {
         if (langFolder.exists()) {
             val langFiles = langFolder.listFiles()?.filter { it.extension == "yml" } ?: emptyList()
             for (file in langFiles) {
-                val fileHandler = YamlFileHandler(file)
-                LangRegistry.loadLocale(fileHandler.config, file.nameWithoutExtension, true)
-            }
+                try {
+                    val fileHandler = YamlFileHandler(file)
+                    LangRegistry.loadLocale(fileHandler.config, file.nameWithoutExtension, true)
+                } catch (e: Exception) {
+                    ConfigErrorHandler.printFriendlyError(plugin.logger, file, e)
+                }}
         }
     }
 
@@ -76,6 +81,7 @@ object GuiDirectoryHandler {
         compileAndLoad(componentsFolder, "texture") { TextureRegistry.load(it) }
         compileAndLoad(componentsFolder, "actions") { ActionRegistry.load(it) }
         compileAndLoad(componentsFolder, "items") { ItemRegistry.load(it) }
+        compileAndLoad(componentsFolder, "states") { StateRegistry.load(it) }
     }
 
     /**
@@ -88,11 +94,15 @@ object GuiDirectoryHandler {
         // 1. Base Files (e.g., component/actions.yml)
         val baseFile = File(componentsFolder, "$componentName.yml")
         if (baseFile.exists()) {
-            val config = YamlFileHandler(baseFile).config
-            for (key in config.getKeys(true)) {
-                if (config.isConfigurationSection(key)) continue
-                masterConfig.set(key, config.get(key))                    // Optional Namespace
-                masterConfig.set("$componentName:$key", config.get(key))  // Mandatory Namespace
+            try {
+                val config = YamlFileHandler(baseFile).config
+                for (key in config.getKeys(true)) {
+                    if (config.isConfigurationSection(key)) continue
+                    masterConfig.set(key, config.get(key))
+                    masterConfig.set("$componentName:$key", config.get(key))
+                }
+            } catch (e: Exception) {
+                ConfigErrorHandler.printFriendlyError(plugin.logger, baseFile, e)
             }
         }
 
@@ -135,8 +145,7 @@ object GuiDirectoryHandler {
                     InputRegistry.register(inputId, anvilSetting)
                 }
             } catch (e: Exception) {
-                plugin.logger.severe("[LimeFrameGUI] Failed to parse input file: ${file.name}")
-                e.printStackTrace()
+                ConfigErrorHandler.printFriendlyError(plugin.logger, file, e)
             }
         }
         plugin.logger.info("[LimeFrameGUI] Successfully indexed ${InputRegistry.getInputs().size} anvil inputs.")
@@ -169,8 +178,7 @@ object GuiDirectoryHandler {
                     standardPages.add(file)
                 }
             } catch (e: Exception) {
-                plugin.logger.severe("[LimeFrameGUI] Failed to parse template file: ${file.name}")
-                e.printStackTrace()
+                ConfigErrorHandler.printFriendlyError(plugin.logger, file, e)
             }
         }
 
@@ -185,8 +193,7 @@ object GuiDirectoryHandler {
                     PageRegistry.register(template)
                 }
             } catch (e: Exception) {
-                plugin.logger.severe("[LimeFrameGUI] Failed to parse page file: ${file.name}")
-                e.printStackTrace()
+                ConfigErrorHandler.printFriendlyError(plugin.logger, file, e)
             }
         }
 
@@ -211,6 +218,7 @@ object GuiDirectoryHandler {
         ActionRegistry.clear()
         TextureRegistry.clear()
         FontRegistry.clear()
+        StateRegistry.clear()
 
         // Extract files
         val guiFolder = File(plugin.dataFolder, baseDir)

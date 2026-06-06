@@ -20,6 +20,7 @@ data class FrameConfigKeys(
     var material: String = "material",
     var name: String = "name",
     var lore: String = "lore",
+    var display: String = "display",
     var updateInterval: String = "update-interval",
     var amount: String = "amount",
     var glow: String = "glow",

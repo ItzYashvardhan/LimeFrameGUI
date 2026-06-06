@@ -1,17 +1,19 @@
 package net.justlime.limeframegui.config
 
 import net.justlime.limeframegui.api.LimeFrameAPI
+import net.justlime.limeframegui.config.GuiDirectoryHandler.plugin
 import net.justlime.limeframegui.models.*
 import net.justlime.limeframegui.registry.common.TemplateCompiler
 import net.justlime.limeframegui.registry.component.ActionRegistry
+import net.justlime.limeframegui.registry.component.LangRegistry
+import net.justlime.limeframegui.registry.component.PlaceholderRegistry
+import net.justlime.limeframegui.registry.component.StateRegistry
 import net.justlime.limeframegui.util.FrameConverter
 import net.justlime.limeframegui.util.toGuiItem
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.configuration.ConfigurationSection
-import org.bukkit.enchantments.Enchantment
 import org.bukkit.inventory.Inventory
-import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
 
@@ -29,55 +31,129 @@ object GuiConfigHandler {
      * Parses a ConfigurationSection into a context-ready [GuiItem], dynamically matching
      * custom configured mapping keys.
      */
+
     fun loadItem(section: ConfigurationSection): GuiItem {
-        // 1. Resolve Audio and Action Metadata
+        // Resolve Audio and Action Metadata
         val soundAlias = section.getString(keys.stylishItemSound)
             ?: section.getStringList(keys.stylishItemSound).firstOrNull()
         val parsedAction = section.getString(keys.action) ?: ActionRegistry.registerInline(section)
 
-        // 2. Construct the Base Visual ItemStack
-        val material = Material.getMaterial(section.getString(keys.material) ?: "AIR") ?: Material.AIR
-        val amount = section.getInt(keys.amount, 1)
-        val baseItem = ItemStack(material, amount)
+        // Fetch Component
+        val componentKey = section.getString("component")
+        val sharedComponent = if (!componentKey.isNullOrBlank()) StateRegistry.get(componentKey) else null
+
+        if (componentKey != null && sharedComponent == null) {
+            plugin.logger.warning("[LimeFrameGUI] Component '$componentKey' referenced at ${section.currentPath} could not be found in StateRegistry.")
+        }
+
+        // DISPLAY MAPPING LOGIC
+        val itemKey = section.name
+        val explicitName = section.getString(keys.name)
+        val explicitLore = if (section.isList(keys.lore)) {
+            section.getStringList(keys.lore)
+        } else {
+            section.getString(keys.lore)?.let { listOf(it) } ?: emptyList()
+        }
+        val explicitDisplay = section.getString(keys.display)
+
+        // Inherit from component first!
+        var finalName = sharedComponent?.currentName ?: ""
+        var finalLore = sharedComponent?.currentLore ?: emptyList<String>()
+
+        when {
+            explicitName != null || explicitLore.isNotEmpty() -> {
+                finalName = explicitName ?: finalName
+                finalLore = if (explicitLore.isNotEmpty()) explicitLore else finalLore
+            }
+
+            explicitDisplay != null -> {
+                val rawLangKey = explicitDisplay.removePrefix("lang.").removePrefix("lang:")
+                val langList = LangRegistry.getList(rawLangKey)
+                if (langList.isNotEmpty()) {
+                    finalName = langList.first()
+                    finalLore = langList.drop(1)
+                }
+            }
+
+            else -> {
+                // Only auto-map if there isn't already a component providing a name
+                if (finalName.isEmpty() && finalLore.isEmpty()) {
+                    val langList = LangRegistry.getList(itemKey)
+                    if (langList.isNotEmpty()) {
+                        finalName = langList.first()
+                        finalLore = langList.drop(1)
+                    }
+                }
+            }
+        }
+
+        // 2. MATERIAL LOGIC (Fixed Inheritance)
+        val localMaterial = section.getString(keys.material)
+        var materialString = sharedComponent?.baseItemString ?: ""
+        var material: Material = sharedComponent?.baseItem?.type ?: Material.STONE
+
+        // If local YAML explicitly defines an item, override the component
+        if (localMaterial != null) {
+            val isPlaceHolderAPISyntax = localMaterial.contains("%")
+            val isLocalPlaceholderSyntax =
+                localMaterial.contains(PlaceholderRegistry.prefix) && localMaterial.contains(PlaceholderRegistry.suffix)
+
+            if (isPlaceHolderAPISyntax || isLocalPlaceholderSyntax) {
+                materialString = localMaterial
+            } else {
+                materialString = ""
+                val matched = Material.matchMaterial(localMaterial.uppercase())
+                if (matched != null) {
+                    material = matched
+                } else {
+                    plugin.logger.warning("[LimeFrameGUI] Invalid material '${localMaterial}' at ${section.currentPath}.")
+                    material = Material.STONE
+                }
+            }
+        }
+
+        // Inherit the amount and base item safely
+        val amount = section.getInt(keys.amount, sharedComponent?.baseItem?.amount ?: 1)
+        val baseItem = if (localMaterial == null && sharedComponent != null) {
+            sharedComponent.baseItem.clone().apply { this.amount = amount }
+        } else {
+            ItemStack(material, amount)
+        }
 
         val meta = baseItem.itemMeta
         if (meta != null) {
-            if (section.getBoolean(keys.unbreakable, false)) {
-                meta.isUnbreakable = true
-            }
+            if (section.getBoolean(keys.unbreakable, false)) meta.isUnbreakable = true
+            if (section.contains(keys.damage) && meta is Damageable) meta.damage =
+                section.getInt(keys.damage)
+            if (section.contains(keys.model)) meta.setCustomModelData(section.getInt(keys.model))
 
-            if (section.contains(keys.damage) && meta is Damageable) {
-                meta.damage = section.getInt(keys.damage)
-            }
-
-            if (section.contains(keys.model)) {
-                meta.setCustomModelData(section.getInt(keys.model))
-            }
-
-            val flags =
-                section.getStringList(keys.flags).mapNotNull { runCatching { ItemFlag.valueOf(it) }.getOrNull() }
-            if (flags.isNotEmpty()) {
-                meta.addItemFlags(*flags.toTypedArray())
-            }
+            val flags = section.getStringList(keys.flags)
+                .mapNotNull { runCatching { org.bukkit.inventory.ItemFlag.valueOf(it) }.getOrNull() }
+            if (flags.isNotEmpty()) meta.addItemFlags(*flags.toTypedArray())
 
             if (section.getBoolean(keys.glow, false)) {
                 try {
-                    meta.setEnchantmentGlintOverride(true) // 1.20.4+ Native Glow
+                    meta.setEnchantmentGlintOverride(true)
                 } catch (_: NoSuchMethodError) {
-                    // Legacy Fallback
-                    val dummyEnchant = Enchantment.getByName("UNBREAKING") ?: Enchantment.getByName("DURABILITY")
+                    val dummyEnchant = org.bukkit.enchantments.Enchantment.getByName("UNBREAKING")
+                        ?: org.bukkit.enchantments.Enchantment.getByName("DURABILITY")
                     if (dummyEnchant != null) {
                         meta.addEnchant(dummyEnchant, 1, true)
-                        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS)
+                        meta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ENCHANTS)
                     }
                 }
             }
             baseItem.itemMeta = meta
         }
 
-        // 3. Parse Data-Driven Session States (Recursive)
-        val stateId = section.getString(keys.stateId)
+        // STATE PARSING LOGIC
+        val stateId = section.getString(keys.stateId) ?: sharedComponent?.stateId
         val states = mutableMapOf<String, GuiItem>()
+
+        sharedComponent?.states?.forEach { (k, v) ->
+            states[k] = v.clone()
+        }
+
         val statesSec = section.getConfigurationSection(keys.states)
         if (statesSec != null) {
             for (stateKey in statesSec.getKeys(false)) {
@@ -88,17 +164,19 @@ object GuiConfigHandler {
             }
         }
 
-        // 4. Assemble the Blueprint
+        // ASSEMBLE BLUEPRINT
         return GuiItem(
             baseItem = baseItem,
-            name = section.getString(keys.name) ?: "",
-            lore = section.getStringList(keys.lore),
+            baseItemString = materialString,
+            name = finalName,
+            lore = finalLore,
             viewRequirements = section.getStringList(keys.viewRequirements),
-            priority = section.getInt(keys.priority, 0),
-            slot = section.getString(keys.slot)?.toIntOrNull(),
-            slotList = section.getIntegerList(keys.slotList),
-            updateInterval = section.getString(keys.updateInterval)?.toIntOrNull(),
-            texture = section.getString(keys.texture),
+            priority = section.getInt(keys.priority, sharedComponent?.priority ?: 0),
+            slot = section.getString(keys.slot)?.toIntOrNull() ?: sharedComponent?.slot,
+            slotList = section.getIntegerList(keys.slotList).takeIf { it.isNotEmpty() } ?: sharedComponent?.slotList
+            ?: emptyList(),
+            updateInterval = section.getString(keys.updateInterval)?.toIntOrNull() ?: sharedComponent?.updateInterval,
+            texture = section.getString(keys.texture) ?: sharedComponent?.texture,
             stateId = stateId,
             states = states,
             style = GuiStyleSheet(
@@ -107,15 +185,16 @@ object GuiConfigHandler {
                         val rule = TextFormatRule()
                         TemplateCompiler.parseTextGroupRule(textSec, "name", rule, keys)
                         rule
-                    } ?: TextFormatRule(),
+                    } ?: sharedComponent?.style?.textSettings?.name ?: TextFormatRule(), // Fallback to component style
+
                     lore = section.getConfigurationSection(keys.textSection)?.let { textSec ->
                         val rule = TextFormatRule()
                         TemplateCompiler.parseTextGroupRule(textSec, "lore", rule, keys)
                         rule
-                    } ?: TextFormatRule()
+                    } ?: sharedComponent?.style?.textSettings?.lore ?: TextFormatRule()  // Fallback to component style
                 ),
-                clickSoundAlias = soundAlias,
-                action = parsedAction
+                clickSoundAlias = soundAlias ?: sharedComponent?.style?.clickSoundAlias,
+                action = parsedAction.takeIf { it?.isNotBlank() == true } ?: sharedComponent?.style?.action ?: ""
             )
         )
     }
@@ -254,6 +333,7 @@ object GuiConfigHandler {
 
         // 2. Write the Visual ItemStack Properties
         section.set(keys.material, base.type.name)
+
         section.set(keys.amount, base.amount)
 
         if (meta != null) {

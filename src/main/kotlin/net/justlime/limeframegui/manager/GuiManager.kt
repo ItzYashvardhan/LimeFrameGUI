@@ -19,7 +19,6 @@ import net.justlime.limeframegui.registry.gui.ListPopulatorRegistry
 import net.justlime.limeframegui.registry.gui.PageRegistry
 import net.justlime.limeframegui.registry.input.InputRegistry
 import org.bukkit.Bukkit
-import org.bukkit.Material
 import org.bukkit.entity.Player
 import java.util.UUID
 import kotlin.collections.ArrayDeque
@@ -99,6 +98,7 @@ object GuiManager {
         AnvilEventImpl(player, setting, builder).open()
         return true
     }
+
     fun open(player: Player, guiId: String, recordHistory: Boolean = true, targetData: TargetData? = null): Boolean {
         val template: GuiPageTemplate = PageRegistry.get(guiId) ?: run {
             println("[LimeFrameGUI] Error: Attempted to open unknown page '$guiId'")
@@ -160,7 +160,7 @@ object GuiManager {
 
             activeItems.forEach { templateItem ->
                 if (templateItem.style.action == "core_next_page" || templateItem.style.action == "core_prev_page") return@forEach
-                if (templateItem.baseItem.type == Material.AIR) return@forEach
+//                if (templateItem.baseItem.type == Material.AIR) return@forEach
 
                 if (templateItem.stateId != null && templateItem.states.isNotEmpty()) {
                     templateItem.states.forEach { (stateKey, stateOverride) ->
@@ -221,7 +221,12 @@ object GuiManager {
         currentGui.remove(uniqueId)
     }
 
-    private fun updateHistoryAndState(player: Player, newGuiId: String, targetData: TargetData, recordHistory: Boolean = true) {
+    private fun updateHistoryAndState(
+        player: Player,
+        newGuiId: String,
+        targetData: TargetData,
+        recordHistory: Boolean = true
+    ) {
         if (recordHistory) {
             val currentlyOpen = currentGui[player.uniqueId]
             if (currentlyOpen != null && currentlyOpen.id != newGuiId) {

@@ -3,20 +3,18 @@ package net.justlime.limeframegui.engine
 import me.clip.placeholderapi.PlaceholderAPI
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.color.FontStyle
-import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.manager.GuiManager
 import net.justlime.limeframegui.models.TargetData
 import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.registry.GuiActionPack
 import net.justlime.limeframegui.models.registry.GuiSound
 import net.justlime.limeframegui.models.response.ActionTagRegistryResponse
-import net.justlime.limeframegui.registry.gui.ButtonRegistry
 import net.justlime.limeframegui.registry.component.ActionRegistry
 import net.justlime.limeframegui.registry.component.ActionTagRegistry
 import net.justlime.limeframegui.registry.component.SoundRegistry
+import net.justlime.limeframegui.registry.gui.ButtonRegistry
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
-import org.bukkit.entity.Player
 import org.bukkit.event.inventory.ClickType
 
 object ActionEngine {
@@ -85,11 +83,11 @@ object ActionEngine {
         }
 
         ActionTagRegistry.register("[run]") { response ->
-            runCustomJavaCode(response.player, response.payload, response.handler)
+            runCustomJavaCode(response)
         }
 
         ActionTagRegistry.register("[code]") { response ->
-            runCustomJavaCode(response.player, response.payload, response.handler)
+            runCustomJavaCode(response)
         }
 
         ActionTagRegistry.register("[open_page]") { response ->
@@ -147,10 +145,13 @@ object ActionEngine {
      * @param handler The active GUI handler (nullable, as actions can run before GUI opens).
      */
     fun executePack(response: ActionTagRegistryResponse, actionPackId: String, clickType: ClickType) {
+
+        if (actionPackId.isBlank()) return
+
         val pack = ActionRegistry.get(actionPackId)
 
         if (pack == null) {
-            runCustomJavaCode(response.player, actionPackId, response.handler)
+            runCustomJavaCode(response.copy(payload = actionPackId))
             return
         }
 
@@ -166,7 +167,6 @@ object ActionEngine {
                         return // First match wins!
                     }
                 }
-                // Fallback to 'else' block if none matched
                 pack.fallback?.let { executeStandardNode(response, it, clickType) }
             }
 
@@ -272,8 +272,9 @@ object ActionEngine {
         }
     }
 
-    private fun runCustomJavaCode(player: Player, identifier: String, gui: GuiEventHandler?) {
-        if (gui == null) {
+    private fun runCustomJavaCode(response: ActionTagRegistryResponse) {
+        val identifier = response.payload
+        if (response.handler == null) {
             println("[LimeFrameGUI] Warning: Attempted to run Java code '$identifier' outside of a GUI context.")
             return
         }
@@ -282,7 +283,7 @@ object ActionEngine {
             return
         }
 
-        val success = ButtonRegistry.execute(identifier, player, gui)
+        val success = ButtonRegistry.execute(identifier, response)
         if (!success) {
             println("[LimeFrameGUI] Warning: Button clicked with unknown action ID or unregistered Java Code: '$identifier'")
         }

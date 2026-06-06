@@ -23,10 +23,13 @@ class YamlFileHandler(private val file: File) {
     }
 
     private fun loadYaml(): YamlConfiguration {
+        val yamlConfig = YamlConfiguration()
         if (!file.exists()) {
-            Bukkit.getLogger().warning("[LimeFrameGUI] File ${file.name} does not exist in ${file.parentFile.absolutePath}")
-            return YamlConfiguration()
+            val location = file.parentFile?.absolutePath ?: file.absolutePath
+            Bukkit.getLogger().warning("[LimeFrameGUI] File ${file.name} does not exist in $location")
+            return yamlConfig
         }
-        return YamlConfiguration.loadConfiguration(file)
+        yamlConfig.load(file)
+        return yamlConfig
     }
 }

@@ -17,6 +17,7 @@ import org.bukkit.inventory.ItemStack
  */
 data class GuiItem(
     var baseItem: ItemStack = ItemStack(Material.AIR),
+    var baseItemString: String = "",
 
     // Raw Text Templates
     var name: String = "",
@@ -63,7 +64,7 @@ data class GuiItem(
             lore = ArrayList(this.lore),
             viewRequirements = ArrayList(this.viewRequirements),
             slotList = ArrayList(this.slotList),
-            states = HashMap(this.states),
+            states = this.states.mapValues { it.value.clone() },
             style = this.style.copy(
                 placeholder = HashMap(this.style.placeholder),
                 textSettings = this.style.textSettings.clone()
