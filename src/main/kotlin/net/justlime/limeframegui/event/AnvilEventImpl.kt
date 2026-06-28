@@ -46,7 +46,7 @@ class AnvilEventImpl(
             val leftStack = ItemRenderer.render(setting.leftItem, context, setting)
             val outputStack = ItemRenderer.render(setting.outPutItem, context, setting)
 
-            setting.openSoundAlias?.let { alias ->
+            setting.openSoundString?.let { alias ->
                 GuiSound.playPack(player, SoundRegistry.get(alias))
             }
 
@@ -95,16 +95,8 @@ class AnvilEventImpl(
         context: GuiStyleSheet
     ): List<AnvilGUI.ResponseAction> {
 
-        // --- INJECTED: Centralized Cancel/Close Sound Logic ---
-        val playCancelSound = {
-            val cancelAlias = setting.cancelSoundAlias ?: context.closeSoundAlias
-            cancelAlias?.let { alias ->
-                GuiSound.playPack(player, SoundRegistry.get(alias))
-            }
-        }
 
         if (slot == AnvilGUI.Slot.INPUT_LEFT || slot == AnvilGUI.Slot.INPUT_RIGHT) {
-            playCancelSound()
             val isLeft = slot == AnvilGUI.Slot.INPUT_LEFT
             val itemAction = if (isLeft) setting.leftItem.style.action else setting.rightItem.style.action
             val callback = if (isLeft) builder.onLeftClickHandler else builder.onRightClickHandler
@@ -129,17 +121,11 @@ class AnvilEventImpl(
         }
 
         if (userInput.isEmpty()) {
-            playCancelSound()
             builder.onInvalidInputHandler?.invoke(player)
             return Collections.emptyList()
         }
 
         if (slot == AnvilGUI.Slot.OUTPUT) {
-            val submitAlias = setting.submitSoundAlias ?: context.clickSoundAlias
-            submitAlias?.let { alias ->
-                GuiSound.playPack(player, SoundRegistry.get(alias))
-            }
-
             val outputAction = setting.outPutItem.style.action
             if (!outputAction.isNullOrEmpty()) {
                 val injectedSetting = setting.clone()

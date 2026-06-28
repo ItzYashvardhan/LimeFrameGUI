@@ -5,23 +5,19 @@ import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.registry.GuiSound
 
 data class AnvilGuiSetting(
-    override var title: String,
+    override var title: String = "",
     var label: String = "",
-    var leftItem: GuiItem,
-    var rightItem: GuiItem,
-    var outPutItem: GuiItem,
+    var leftItem: GuiItem = GuiItem(),
+    var rightItem: GuiItem = GuiItem(),
+    var outPutItem: GuiItem = GuiItem(),
 
     // Compiled lists for instant playback
     val openSounds: List<GuiSound> = emptyList(),
-    val cancelSounds: List<GuiSound> = emptyList(),
-    val submitSounds: List<GuiSound> = emptyList(),
 
     // Raw aliases for safe config saving
-    val openSoundAlias: String? = null,
-    val cancelSoundAlias: String? = null,
-    val submitSoundAlias: String? = null,
+    var openSoundString: String? = null,
 
-    override var style: GuiStyleSheet,
+    override var style: GuiStyleSheet = GuiStyleSheet(),
     var preventClose: Boolean = false,
     override var openRequirements: List<String> = emptyList(),
     override var denyBehavior: ActionBehavior = ActionBehavior.Simple(emptyList()),
@@ -39,18 +35,13 @@ data class AnvilGuiSetting(
 
             // Deep copy the compiled lists
             openSounds = ArrayList(openSounds),
-            cancelSounds = ArrayList(cancelSounds),
-            submitSounds = ArrayList(submitSounds),
 
             // Pass the raw aliases
-            openSoundAlias = openSoundAlias,
-            cancelSoundAlias = cancelSoundAlias,
-            submitSoundAlias = submitSoundAlias,
+            openSoundString = openSoundString,
 
             style = style.copy(),
             preventClose = preventClose,
 
-            // Fix: Added missing deep copies!
             openRequirements = ArrayList(openRequirements),
             denyBehavior = denyBehavior,
             localVariables = HashMap(localVariables),

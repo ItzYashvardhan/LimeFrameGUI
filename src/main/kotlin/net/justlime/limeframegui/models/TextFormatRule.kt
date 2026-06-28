@@ -8,7 +8,9 @@ data class TextFormatRule(
     var prefix: String? = null,
     var suffix: String? = null,
     var textCase: TextCase? = null,
-    var wrapLength: Int? = null
+    var wrapLength: Int? = null,
+    var center: Boolean? = null //TODO
+
 ) {
     fun clone() = TextFormatRule(
         font,
@@ -16,6 +18,7 @@ data class TextFormatRule(
         prefix,
         suffix,
         textCase,
-        wrapLength
+        wrapLength,
+        center
     )
 }

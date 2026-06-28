@@ -76,7 +76,6 @@ object GuiManager {
         builder.onConfirmClick { state, userInput ->
             if (userInput.isNotBlank()) {
                 val finalCommand = commandRaw.replace("{input}", userInput)
-                // Use the merged 'setting' here so the command resolves {warp_name}
                 val response = ActionTagRegistryResponse(player, finalCommand, null, setting)
                 val behavior = ActionBehavior.Simple(listOf(finalCommand))
                 ActionEngine.executeBehavior(response, behavior)

@@ -68,7 +68,8 @@ object GuiDirectoryHandler {
                     LangRegistry.loadLocale(fileHandler.config, file.nameWithoutExtension, true)
                 } catch (e: Exception) {
                     ConfigErrorHandler.printFriendlyError(plugin.logger, file, e)
-                }}
+                }
+            }
         }
     }
 
@@ -88,7 +89,11 @@ object GuiDirectoryHandler {
      * Merges a root YAML file and any nested files within a corresponding directory
      * into a unified configuration map before passing it to the target registry.
      */
-    private fun compileAndLoad(componentsFolder: File, componentName: String, registryLoadFunc: (ConfigurationSection) -> Unit) {
+    private fun compileAndLoad(
+        componentsFolder: File,
+        componentName: String,
+        registryLoadFunc: (ConfigurationSection) -> Unit
+    ) {
         val masterConfig = YamlConfiguration()
 
         // 1. Base Files (e.g., component/actions.yml)
@@ -168,7 +173,9 @@ object GuiDirectoryHandler {
         for (file in yamlFiles) {
             try {
                 val fileHandler = YamlFileHandler(file)
-                val type = fileHandler.config.getString("${LimeFrameAPI.keys.main}.type")?.lowercase()
+                val finalKey = FrameKeys.Main.SECTION + "." + FrameKeys.Main.TYPE
+
+                val type = fileHandler.config.getString(finalKey)?.lowercase()
 
                 if (type == "interface" || type == "template") {
                     val relativePath = file.relativeTo(pagesFolder).path

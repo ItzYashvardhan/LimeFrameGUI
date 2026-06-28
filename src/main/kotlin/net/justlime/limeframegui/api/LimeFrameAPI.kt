@@ -1,7 +1,6 @@
 package net.justlime.limeframegui.api
 
 import net.justlime.limeframegui.color.FontStyle
-import net.justlime.limeframegui.config.FrameConfigKeys
 import net.justlime.limeframegui.config.GuiDirectoryHandler
 import net.justlime.limeframegui.enums.ColorType
 import net.justlime.limeframegui.integration.FoliaLibHook
@@ -18,7 +17,6 @@ import org.bukkit.plugin.java.JavaPlugin
 object LimeFrameAPI {
     private lateinit var plugin: JavaPlugin
     var debugging: Boolean = false
-    internal var keys: FrameConfigKeys = FrameConfigKeys()
 
     fun init(plugin: JavaPlugin, colorType: ColorType = ColorType.LEGACY): LimeFrameAPI {
         this.plugin = plugin
@@ -48,10 +46,6 @@ object LimeFrameAPI {
     fun enableFoliaLib(): LimeFrameAPI {
         FoliaLibHook.init(plugin)
         return this
-    }
-
-    fun setKeys(customizer: FrameConfigKeys.() -> Unit): LimeFrameAPI {
-        keys.customizer(); return this
     }
 
     fun getPlugin(): JavaPlugin = plugin

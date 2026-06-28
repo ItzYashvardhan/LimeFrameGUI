@@ -112,7 +112,7 @@ fun formattedPage(setting: GuiSetting, player: Player) {
             item2.style.placeholder = mutableMapOf("{time}" to player.ticksLived.toString())
             addItem(item2) { event ->
                 event.item?.style?.placeholder = mutableMapOf("{time}" to player.ticksLived.toString())
-                event.update(session.context,setting)
+                event.update(session.styleSheet,setting)
             }
 
             addItem(item4)

@@ -164,7 +164,7 @@ object ActionEngine {
 
                     if (ConditionEngine.checkRequirements(response.player, resolvedReqs)) {
                         executeStandardNode(response, node, clickType)
-                        return // First match wins!
+                        return
                     }
                 }
                 pack.fallback?.let { executeStandardNode(response, it, clickType) }
@@ -209,7 +209,7 @@ object ActionEngine {
             is ActionBehavior.Simple -> runActions(response, behavior.actions)
 
             is ActionBehavior.When -> {
-                // 1. Resolve target value using the TextResolver pipeline
+                // Resolve target value using the TextResolver pipeline
                 val rawPlaceholder = behavior.valuePlaceholder
                 var resolvedValue = if (response.context != null) {
                     TextResolver.resolve(response.player, rawPlaceholder, response.context, response.item?.style)
@@ -223,7 +223,7 @@ object ActionEngine {
                 if (resolvedValue.isEmpty()) resolvedValue = "false"
                 resolvedValue = resolvedValue.removeSuffix(".0") // Clean Vault decimals
 
-                // 2. Find exact match, fallback to "else" or "default"
+                // Find exact match, fallback to "else" or "default"
                 val matchedBehavior = behavior.results[resolvedValue]
                     ?: behavior.results["else"]
                     ?: behavior.results["default"]

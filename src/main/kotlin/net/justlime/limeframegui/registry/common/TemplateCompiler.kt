@@ -1,20 +1,23 @@
 package net.justlime.limeframegui.registry.common
 
 import net.justlime.limeframegui.api.LimeFrameAPI
-import net.justlime.limeframegui.config.FrameConfigKeys
+import net.justlime.limeframegui.config.FrameKeys
 import net.justlime.limeframegui.config.GuiConfigHandler
+import net.justlime.limeframegui.context.AnvilGuiSetting
+import net.justlime.limeframegui.context.GuiSetting
+import net.justlime.limeframegui.context.IContextSetting
+import net.justlime.limeframegui.context.SharedContextSetting
 import net.justlime.limeframegui.enums.TextCase
 import net.justlime.limeframegui.models.*
 import net.justlime.limeframegui.models.parser.CompiledLayers
 import net.justlime.limeframegui.models.parser.ConfigLayer
 import net.justlime.limeframegui.models.parser.PatternVariants
+import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.registry.DynamicListMask
 import net.justlime.limeframegui.registry.component.ActionRegistry
 import net.justlime.limeframegui.registry.component.ItemRegistry
 import org.bukkit.configuration.ConfigurationSection
 import org.bukkit.configuration.file.YamlConfiguration
-import kotlin.collections.iterator
-import kotlin.text.iterator
 
 object TemplateCompiler {
 
@@ -23,7 +26,10 @@ object TemplateCompiler {
      */
     fun compilePage(pageId: String, config: YamlConfiguration): GuiPageTemplate? {
         val configsToParse = resolveConfigChain(pageId, config) ?: return null
+
+        //Settings
         val setting = compileSettings(configsToParse)
+
 
         val unifiedFallbackDictionary = buildUnifiedDictionary(configsToParse)
 
@@ -45,18 +51,18 @@ object TemplateCompiler {
      */
     fun compileAnvil(anvilId: String, config: YamlConfiguration): AnvilGuiSetting? {
         val configsToParse = resolveConfigChain(anvilId, config) ?: return null
+        //Settings
         val baseContext = compileSettings(configsToParse)
 
-        // DELEGATE to GuiConfigHandler for raw item and audio extraction
-        val anvilSetting = GuiConfigHandler.loadAnvilSetting(config)
 
-        // Merge Inheritance Context & Typography into the Anvil Setting
+
+        val anvilSetting = GuiConfigHandler.loadAnvilSetting(config)
         anvilSetting.title = baseContext.title
         if (baseContext.label.isNotEmpty()) {
             anvilSetting.label = baseContext.label
         }
 
-        // Apply typography rules to items so they render beautifully
+        // Apply typography rules
         anvilSetting.style.textSettings = baseContext.style.textSettings.clone()
         anvilSetting.leftItem.style.textSettings = baseContext.style.textSettings.clone()
         anvilSetting.rightItem.style.textSettings = baseContext.style.textSettings.clone()
@@ -73,43 +79,38 @@ object TemplateCompiler {
 
 
     /**
-     * parsing helper to prevent repetitive code for title, name, and lore rules.
+     * Parsing helper to prevent repetitive code for title, name, and lore rules.
      * Modifies properties in-place so parents bleed through cleanly until overridden!
      */
-    fun parseTextGroupRule(
-        textSection: ConfigurationSection,
-        subPath: String,
-        targetRule: TextFormatRule,
-        keys: FrameConfigKeys
-    ) {
+    fun parseTextGroupRule(textSection: ConfigurationSection, subPath: String, targetRule: TextFormatRule) {
         val sec = textSection.getConfigurationSection(subPath) ?: return
 
-        if (sec.contains(keys.textFont)) {
-            targetRule.font = sec.getBoolean(keys.textFont)
+        if (sec.contains(FrameKeys.Text.FONT)) {
+            targetRule.font = sec.getBoolean(FrameKeys.Text.FONT)
         }
 
-        if (sec.contains(keys.textPrefix)) {
-            targetRule.prefix = sec.getString(keys.textPrefix)
+        if (sec.contains(FrameKeys.Text.PREFIX)) {
+            targetRule.prefix = sec.getString(FrameKeys.Text.PREFIX)
         }
 
-        if (sec.contains(keys.textSuffix)) {
-            targetRule.suffix = sec.getString(keys.textSuffix)
+        if (sec.contains(FrameKeys.Text.SUFFIX)) {
+            targetRule.suffix = sec.getString(FrameKeys.Text.SUFFIX)
         }
 
-        if (sec.contains(keys.textWrapLength)) {
-            targetRule.wrapLength = sec.getInt(keys.textWrapLength)
+        if (sec.contains(FrameKeys.Text.WRAP_LENGTH)) {
+            targetRule.wrapLength = sec.getInt(FrameKeys.Text.WRAP_LENGTH)
         }
 
-        if (sec.contains(keys.textWeight)) {
-            targetRule.weights = if (sec.isList(keys.textWeight)) {
-                sec.getStringList(keys.textWeight)
+        if (sec.contains(FrameKeys.Text.WEIGHT)) {
+            targetRule.weights = if (sec.isList(FrameKeys.Text.WEIGHT)) {
+                sec.getStringList(FrameKeys.Text.WEIGHT)
             } else {
-                sec.getString(keys.textWeight)?.let { listOf(it) }
+                sec.getString(FrameKeys.Text.WEIGHT)?.let { listOf(it) }
             }
         }
 
-        if (sec.contains(keys.textCase)) {
-            val caseStr = sec.getString(keys.textCase)?.replace("-", "_")?.uppercase()
+        if (sec.contains(FrameKeys.Text.CASE)) {
+            val caseStr = sec.getString(FrameKeys.Text.CASE)?.replace("-", "_")?.uppercase()
             if (caseStr != null) {
                 runCatching { targetRule.textCase = TextCase.valueOf(caseStr) }
             }
@@ -121,17 +122,20 @@ object TemplateCompiler {
      * Returns null if the config is a template/interface (and registers it automatically).
      */
     private fun resolveConfigChain(id: String, config: YamlConfiguration): List<ConfigLayer>? {
-        val mainSection = config.getConfigurationSection(LimeFrameAPI.keys.main)
+        val mainSection = config.getConfigurationSection(FrameKeys.Main.SECTION)
         val type = mainSection?.getString("type")?.lowercase()
 
-        if (type == "interface" || type == "template") {
+        if (type == FrameKeys.Main.TEMPLATE) {
             TemplateRegistry.register(id, config)
-            return null
+            return null //Here null means inherit
         }
 
-        val inheritList = mainSection?.getStringList("inherit") ?: emptyList()
+        val inheritList = mainSection?.getStringList(FrameKeys.Main.INHERIT) ?: emptyList()
         val configsToParse = resolveInheritance(inheritList).toMutableList()
-        configsToParse.add(ConfigLayer(config, emptyList()))
+        val layer = ConfigLayer(config, emptyList())
+        configsToParse.add(layer)
+
+        //border <- background <-- dashboard here 0 index is border and last index always be our main page
         return configsToParse
     }
 
@@ -139,51 +143,93 @@ object TemplateCompiler {
      * Iterates from parent to child to build settings. 
      * Children inherit parent properties unless explicitly overridden.
      */
-    private fun compileSettings(configsToParse: List<ConfigLayer>): GuiSetting {
-        val keys = LimeFrameAPI.keys
-        val finalSetting = GuiSetting(rows = keys.defaultInventoryRows, title = keys.defaultInventoryTitle)
+    private fun compileSettings(configsToParse: List<ConfigLayer>): IContextSetting {
+        val context = SharedContextSetting()
+        val configurationList = configsToParse.map { it.config }
 
-        for ((cfg, _) in configsToParse) {
-            val mainSec = cfg.getConfigurationSection(keys.main) ?: continue
+        for (cfg in configurationList) {
+            val mainSec = cfg.getConfigurationSection(FrameKeys.Main.SECTION) ?: continue
 
-            // Core Dimensions & Metadata
-            if (mainSec.contains(keys.inventoryRows)) {
-                finalSetting.rows = mainSec.getInt(keys.inventoryRows, finalSetting.rows)
+            // Shared Core Metadata
+            if (mainSec.contains(FrameKeys.Main.TITLE)) {
+                context.title = mainSec.getString(FrameKeys.Main.TITLE) ?: context.title
             }
-            if (mainSec.contains(keys.inventoryTitle)) {
-                finalSetting.title = mainSec.getString(keys.inventoryTitle) ?: finalSetting.title
-            }
-
-            if (mainSec.contains(keys.anvilLabel)) {
-                finalSetting.label = mainSec.getString(keys.anvilLabel) ?: finalSetting.label
+            if (mainSec.contains(FrameKeys.Anvil.LABEL)) {
+                context.label = mainSec.getString(FrameKeys.Anvil.LABEL) ?: context.label
             }
 
-            // Open Requirements & Deny Handlers
-            if (mainSec.contains(keys.openRequirements)) {
-                finalSetting.openRequirements = mainSec.getStringList(keys.openRequirements)
+            // Shared Session Boundaries
+            if (mainSec.contains(FrameKeys.Context.OPEN_REQUIREMENTS)) {
+                context.openRequirements = mainSec.getStringList(FrameKeys.Context.OPEN_REQUIREMENTS)
             }
-            if (mainSec.contains(keys.denyActions)) {
-                finalSetting.denyBehavior = ActionRegistry.parseBehavior(mainSec, keys.denyActions)
-            }
-
-            if (mainSec.contains(keys.localVariables)) {
-                finalSetting.localVariables += parseStringMap(mainSec, keys.localVariables)
-            }
-            if (mainSec.contains(keys.localPlaceholders)) {
-                finalSetting.localPlaceholders += parseStringMap(mainSec, keys.localPlaceholders)
+            if (mainSec.contains(FrameKeys.Context.DENY_ACTIONS)) {
+                context.denyBehavior = ActionRegistry.parseBehavior(mainSec, FrameKeys.Context.DENY_ACTIONS)
             }
 
+            if (mainSec.contains(FrameKeys.Context.LOCAL_VARIABLES)) {
+                context.localVariables += parseStringMap(mainSec, FrameKeys.Context.LOCAL_VARIABLES)
+            }
+            if (mainSec.contains(FrameKeys.Context.LOCAL_PLACEHOLDERS)) {
+                context.localPlaceholders += parseStringMap(mainSec, FrameKeys.Context.LOCAL_PLACEHOLDERS)
+            }
 
-            // Advanced Text Formatting Section (Title, Name, Lore)
-            val textSec = mainSec.getConfigurationSection(keys.textSection)
+            // Shared Typography Rules
+            val textSec = mainSec.getConfigurationSection(FrameKeys.Text.SECTION)
             if (textSec != null) {
-                parseTextGroupRule(textSec, "title", finalSetting.style.textSettings.title, keys)
-                parseTextGroupRule(textSec, "name", finalSetting.style.textSettings.name, keys)
-                parseTextGroupRule(textSec, "lore", finalSetting.style.textSettings.lore, keys)
+                parseTextGroupRule(textSec, FrameKeys.Main.TITLE, context.style.textSettings.title)
+                parseTextGroupRule(textSec, FrameKeys.Item.NAME, context.style.textSettings.name)
+                parseTextGroupRule(textSec, FrameKeys.Item.LORE, context.style.textSettings.lore)
             }
         }
 
-        return finalSetting
+        return context
+    }
+
+    private fun compileGuiSetting(configsToParse: List<ConfigLayer>, baseContext: IContextSetting): GuiSetting {
+        var rows = FrameKeys.Default.DEFAULT_ROWS
+
+        // Find rows specifically from parent down to child
+        for (layer in configsToParse) {
+            val mainSec = layer.config.getConfigurationSection(FrameKeys.Main.SECTION) ?: continue
+            if (mainSec.contains(FrameKeys.Main.ROWS)) {
+                rows = mainSec.getInt(FrameKeys.Main.ROWS, rows)
+            }
+        }
+
+        return GuiSetting(
+            rows = rows,
+            title = baseContext.title,
+            style = baseContext.style.copy(),
+            openRequirements = baseContext.openRequirements,
+            denyBehavior = baseContext.denyBehavior,
+            localVariables = baseContext.localVariables,
+            localPlaceholders = baseContext.localPlaceholders
+        )
+    }
+
+    private fun compileAnvilSetting(configsToParse: List<ConfigLayer>, baseContext: IContextSetting): AnvilGuiSetting {
+        // 1. Load basic layout using your multi-layer config pipeline
+        val anvilSetting = GuiConfigHandler.loadAnvilSetting(configsToParse)
+
+        // 2. Map basic structural metadata
+        anvilSetting.title = baseContext.title
+        if (baseContext is SharedContextSetting) {
+            anvilSetting.label = baseContext.label
+        }
+
+        // 3. Deep-copy global typography rules to individual slot instances
+        anvilSetting.style.textSettings = baseContext.style.textSettings.clone()
+        anvilSetting.leftItem.style.textSettings = baseContext.style.textSettings.clone()
+        anvilSetting.rightItem.style.textSettings = baseContext.style.textSettings.clone()
+        anvilSetting.outPutItem.style.textSettings = baseContext.style.textSettings.clone()
+
+        // 4. Bind context variables
+        anvilSetting.openRequirements = baseContext.openRequirements
+        anvilSetting.denyBehavior = baseContext.denyBehavior
+        anvilSetting.localVariables = baseContext.localVariables
+        anvilSetting.localPlaceholders = baseContext.localPlaceholders
+
+        return anvilSetting
     }
 
     /**
@@ -207,20 +253,18 @@ object TemplateCompiler {
         val unifiedMap = mutableMapOf<Char, MutableList<GuiItem>>()
 
         for ((cfg, _) in configsToParse) {
-            val ingredientsSection = cfg.getConfigurationSection("ingredients")
+            val ingredientsSection = cfg.getConfigurationSection(FrameKeys.Main.INGREDIENTS)
             if (ingredientsSection != null) {
                 for (key in ingredientsSection.getKeys(false)) {
                     val itemSec = ingredientsSection.getConfigurationSection(key) ?: continue
                     val item = GuiConfigHandler.loadItem(itemSec)
-
                     unifiedMap.getOrPut(key.first()) { mutableListOf() }.add(item)
                 }
             }
             for (key in cfg.getKeys(false)) {
-                if (key == "main" || key == "ingredients" || key == "dynamic_list") continue
+                if (key == FrameKeys.Main.SECTION || key == FrameKeys.Main.INGREDIENTS || key == FrameKeys.Main.DYNAMIC_LIST) continue
                 val itemSec = cfg.getConfigurationSection(key) ?: continue
-                val charStr = cfg.getString("$key.char")
-
+                val charStr = cfg.getString("$key.${FrameKeys.Item.CHAR}")
                 if (!charStr.isNullOrEmpty()) {
                     val item = GuiConfigHandler.loadItem(itemSec)
 
@@ -246,14 +290,14 @@ object TemplateCompiler {
         val permissionLayouts = mutableMapOf<String, MutableMap<Int, MutableList<GuiItem>>>()
         val explicitSlotLayouts = mutableMapOf<String, MutableMap<Int, MutableList<GuiItem>>>()
         val masterDynamicSlots = mutableSetOf<Int>()
-        permissionLayouts["default"] = mutableMapOf()
+        permissionLayouts[FrameKeys.Default.DEFAULT] = mutableMapOf()
 
         for ((cfg, excludedChars) in configsToParse) {
             val rawVariants = extractPatternVariants(cfg, totalRows)
             val localDictionary = mutableMapOf<Char, MutableList<GuiItem>>()
             val localExplicitItems = mutableListOf<GuiItem>()
 
-            val ingredientsSection = cfg.getConfigurationSection("ingredients")
+            val ingredientsSection = cfg.getConfigurationSection(FrameKeys.Main.INGREDIENTS)
             if (ingredientsSection != null) {
                 for (charKey in ingredientsSection.getKeys(false)) {
                     val char = charKey.first()
@@ -264,10 +308,10 @@ object TemplateCompiler {
             }
 
             for (key in cfg.getKeys(false)) {
-                if (key == "main" || key == "ingredients" || key == "dynamic_list") continue
+                if (key == FrameKeys.Main.SECTION || key == FrameKeys.Main.INGREDIENTS || key == FrameKeys.Main.DYNAMIC_LIST) continue
                 val itemSec = cfg.getConfigurationSection(key) ?: continue
                 val guiItem = GuiConfigHandler.loadItem(itemSec)
-                val charStr = cfg.getString("$key.char")
+                val charStr = cfg.getString("$key.${FrameKeys.Item.CHAR}")
 
                 if (!charStr.isNullOrEmpty()) {
                     val char = charStr.first()
@@ -282,7 +326,7 @@ object TemplateCompiler {
 
             val targetPermissions = if (rawVariants.isDefaultOnly) {
                 val existingPerms = permissionLayouts.keys.toList()
-                existingPerms.ifEmpty { listOf("default") }
+                existingPerms.ifEmpty { listOf(FrameKeys.Default.DEFAULT) }
             } else rawVariants.permissions.toList()
 
 
@@ -298,10 +342,12 @@ object TemplateCompiler {
                     val cleanRow = row.replace(" ", "")
                     for (char in cleanRow) {
                         when (char) {
-                            dynamicChar -> masterDynamicSlots.add(currentSlot)
-                            '!' -> masterLayout[currentSlot] =
-                                mutableListOf(GuiItem().apply { slot = currentSlot })
+                            dynamicChar -> {
+                                masterDynamicSlots.add(currentSlot)
+                                masterLayout.remove(currentSlot)
+                            }
 
+                            '!' -> masterLayout[currentSlot] = mutableListOf(GuiItem().apply { slot = currentSlot })
                             '.', '_' -> {}
                             else -> {
                                 val itemsToPlace = if (excludedChars.contains(char)) {
@@ -313,8 +359,9 @@ object TemplateCompiler {
                                 }
 
                                 if (itemsToPlace != null) {
-                                    masterLayout[currentSlot] =
-                                        itemsToPlace.map { it.clone().apply { slot = currentSlot } }.toMutableList()
+                                    val mappedItems = itemsToPlace.map { it.clone().apply { slot = currentSlot } }
+                                    // FIX 1: Add at index 0! This ensures child layers sit on top of parent layers during Priority 0 ties.
+                                    masterLayout.getOrPut(currentSlot) { mutableListOf() }.addAll(0, mappedItems)
                                 }
                             }
                         }
@@ -323,9 +370,12 @@ object TemplateCompiler {
                 }
 
                 for (explicitItem in localExplicitItems) {
-                    explicitItem.slot?.let { explicitLayout.getOrPut(it) { mutableListOf() }.add(explicitItem.clone()) }
+                    // FIX 2: Add explicit slot items at index 0 as well!
+                    explicitItem.slot?.let {
+                        explicitLayout.getOrPut(it) { mutableListOf() }.add(0, explicitItem.clone())
+                    }
                     explicitItem.slotList.forEach {
-                        explicitLayout.getOrPut(it) { mutableListOf() }.add(explicitItem.clone())
+                        explicitLayout.getOrPut(it) { mutableListOf() }.add(0, explicitItem.clone())
                     }
                 }
             }
@@ -335,9 +385,11 @@ object TemplateCompiler {
         for ((perm, layout) in permissionLayouts) {
             val explicitOverrides = explicitSlotLayouts[perm] ?: emptyMap()
             for ((slot, items) in explicitOverrides) {
-                layout.getOrPut(slot) { mutableListOf() }.addAll(items)
+                // Add explicit overrides to the front of the line
+                layout.getOrPut(slot) { mutableListOf() }.addAll(0, items)
             }
-            finalPermissionItems[perm] = layout.values.flatten().sortedBy { it.priority }
+            // We no longer need to sort here because GuiSession handles the priority sorting automatically!
+            finalPermissionItems[perm] = layout.values.flatten()
         }
 
         return CompiledLayers(finalPermissionItems, masterDynamicSlots.toList())
@@ -347,7 +399,7 @@ object TemplateCompiler {
      * Builds the dynamic mask logic for pagination limits, templates, and bounds.
      */
     private fun buildDynamicMask(config: YamlConfiguration, masterDynamicSlotsList: List<Int>): DynamicListMask? {
-        val dynamicListSection = config.getConfigurationSection("dynamic_list")
+        val dynamicListSection = config.getConfigurationSection(FrameKeys.Main.DYNAMIC_LIST)
         if (dynamicListSection == null || masterDynamicSlotsList.isEmpty()) return null
 
         val populatorId = dynamicListSection.getString("populator_id") ?: ""
@@ -405,7 +457,7 @@ object TemplateCompiler {
      */
     private fun resolveInheritance(
         inheritList: List<String>,
-        visited: MutableSet<String> = mutableSetOf()
+        visitedPath: Set<String> = emptySet()
     ): List<ConfigLayer> {
         val resolvedConfigs = mutableListOf<ConfigLayer>()
 
@@ -414,18 +466,23 @@ object TemplateCompiler {
             val templateId = parts[0]
             val cherryPickedChars = parts.drop(1).mapNotNull { it.removePrefix("--").firstOrNull() }
 
-            if (visited.contains(templateId)) {
+            if (visitedPath.contains(templateId)) {
                 LimeFrameAPI.getPlugin().logger.warning("[LimeFrameGUI] WARNING: Circular inheritance detected at '$templateId'. Skipping.")
                 continue
             }
 
             val templateConfig = TemplateRegistry.get(templateId) ?: continue
-            visited.add(templateId)
+            val newVisitedPath = visitedPath + templateId
+            // Resolve the key safely
+            val inheritKey = "${FrameKeys.Main.SECTION}.${FrameKeys.Main.INHERIT}"
 
-            val parentInherits = templateConfig.getStringList("${LimeFrameAPI.keys.main}.inherit")
+            // Go deeper if there are parents
+            val parentInherits = templateConfig.getStringList(inheritKey)
             if (parentInherits.isNotEmpty()) {
-                resolvedConfigs.addAll(resolveInheritance(parentInherits, visited))
+                resolvedConfigs.addAll(resolveInheritance(parentInherits, newVisitedPath))
             }
+
+            // Add this layer
             val layer = ConfigLayer(templateConfig, cherryPickedChars)
             resolvedConfigs.add(layer)
         }
@@ -439,14 +496,14 @@ object TemplateCompiler {
      */
     private fun extractPatternVariants(config: YamlConfiguration, targetRows: Int): PatternVariants {
         val layouts = mutableMapOf<String, MutableMap<Int, String>>()
-        val patternPath = LimeFrameAPI.keys.pattern
+        val patternPath = FrameKeys.Main.SECTION + "." + FrameKeys.Main.PATTERN
 
         // Child page format (Direct List) -> Maps to "default"
         if (config.isList(patternPath)) {
             val list = config.getStringList(patternPath)
             val defaultMap = mutableMapOf<Int, String>()
             list.forEachIndexed { index, row -> defaultMap[index] = row }
-            layouts["default"] = defaultMap
+            layouts[FrameKeys.Default.DEFAULT] = defaultMap
             return PatternVariants(layouts)
         }
 
@@ -460,7 +517,7 @@ object TemplateCompiler {
                     val list = patternSection.getStringList(key)
                     val defaultMap = mutableMapOf<Int, String>()
                     list.forEachIndexed { index, row -> defaultMap[index] = row }
-                    layouts["default"] = defaultMap
+                    layouts[FrameKeys.Default.DEFAULT] = defaultMap
                 }
             } else {
                 // Format: 'player.theme.blue: 3: [ ... ]' (Permission based)

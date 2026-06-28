@@ -27,13 +27,11 @@ class GuiPageImpl(
 
     override var inventory = handler.createPageInventory(viewerPage, setting)
 
-    // 🌟 CHANGED: Now a MutableList to support conditional stacking!
     override val itemCache = mutableListOf<GuiItem>()
 
-    override val style: GuiStyleSheet = builder.session.context
+    override val style: GuiStyleSheet = builder.session.styleSheet
     override var isRendered: Boolean = false
 
-    // 🌟 CHANGED: Return the List directly
     override fun getItems(): List<GuiItem> = itemCache
 
     override var trackAddItemSlot = mutableMapOf<Int, Pair<GuiItem, GuiClick.(InventoryClickEvent) -> Unit>>()
@@ -99,7 +97,6 @@ class GuiPageImpl(
             itemCache.add(newItem)
             registerClickEvent(newItem, index, onClick,setting)
 
-            // Programmatic dynamic updates bypass the condition engine for legacy support
             val itemStack = ItemRenderer.render(newItem, setting.style, setting)
             if (dynamic) inventory.setItem(index, itemStack)
 
@@ -111,7 +108,6 @@ class GuiPageImpl(
     override fun remove(slot: Int): GuiPage {
         if (builder.pages[viewerPage]?.trackAddItemSlot?.containsKey(slot) != true) {
             inventory.setItem(slot, null)
-            // 🌟 CHANGED: Remove all items sharing this slot
             itemCache.removeAll { it.slot == slot }
             handler.itemClickHandler[viewerPage]?.remove(slot)
             return this
@@ -150,7 +146,6 @@ class GuiPageImpl(
 
             lastItemPage?.inventory?.setItem(lastItemSlot, null)
 
-            // 🌟 CHANGED: Remove all items on this slot
             (lastItemPage as? GuiPageImpl)?.itemCache?.removeAll { it.slot == lastItemSlot }
 
             handler.itemClickHandler[lastItemPageId]?.remove(lastItemSlot)
@@ -180,7 +175,6 @@ class GuiPageImpl(
         handler.open(player, id)
     }
 
-    // 🌟 CHANGED: Maps occupied slots from the List to find a free space
     private fun findFreeSlot(contents: List<GuiItem>): Int {
         val reserved = getReservedSlots(inventory)
         val occupiedSlots = contents.mapNotNull { it.slot }.toSet()

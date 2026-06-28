@@ -12,15 +12,7 @@ class LimeFrameGUI : JavaPlugin() {
         this.saveDefaultConfig()
         CommandManager(this)
         LimeFrameAPI.init(this, ColorType.MINI_MESSAGE)
-            .setKeys {
-                stylishTitle = true
-                stylishName = true
-                stylishLore = false
-                material = "item"
-            }
-            .loadConfig()
         LimeFrameAPI.debugging = true
-
     }
 
     override fun onDisable() {

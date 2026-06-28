@@ -1,24 +1,26 @@
 package net.justlime.limeframegui.session
 
 import net.justlime.limeframegui.api.LimeFrameAPI
-import net.justlime.limeframegui.color.FontStyle
-import net.justlime.limeframegui.event.GuiEventHandler
-import net.justlime.limeframegui.menu.GuiPage
 import net.justlime.limeframegui.builder.ChestGUIBuilder
 import net.justlime.limeframegui.engine.ConditionEngine
 import net.justlime.limeframegui.engine.TextResolver
-import net.justlime.limeframegui.models.GuiBuffer
-import net.justlime.limeframegui.models.GuiStyleSheet
+import net.justlime.limeframegui.event.GuiEventHandler
 import net.justlime.limeframegui.menu.ChestGUI
+import net.justlime.limeframegui.menu.GuiPage
+import net.justlime.limeframegui.models.GuiBuffer
 import net.justlime.limeframegui.models.GuiItem
+import net.justlime.limeframegui.models.GuiStyleSheet
 import net.justlime.limeframegui.util.PerformanceMonitor
-import org.bukkit.Bukkit
 import org.bukkit.inventory.Inventory
 import org.bukkit.scheduler.BukkitRunnable
 
-class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
+/**
+ * * Orchestrates the lifecycle of a GUI session for a specific player.
+ * Manages page rendering, buffering, and real-time state observation.
+ */
+class GuiSession(val blueprint: ChestGUI, val styleSheet: GuiStyleSheet) {
 
-    private val viewer = context.viewer
+    private val viewer = styleSheet.viewer
         ?: throw IllegalStateException("Cannot start a GUI Session without a player in the stylesheet context.")
     private var buffer: GuiBuffer? = null
     private var activeObserverTask: BukkitRunnable? = null
@@ -115,13 +117,11 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         }
     }
 
-
     fun softRefresh() {
         PerformanceMonitor.measure("SOFT REFRESH PAGES") {
             val currentPageId = builder.session.handler.getCurrentPage(viewer) ?: 0
             if (LimeFrameAPI.debugging) println("Soft Refresh PageId used $currentPageId")
 
-            // Re-render, but tell it to REUSE the existing Bukkit Inventory objects!
             if (buffer != null) {
                 renderBufferPages(currentPageId, reuseExisting = true)
             } else {
@@ -130,7 +130,6 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
                 }
             }
 
-            // Restart observers in case new animated items were added by view-requirements
             handler.pageInventories[currentPageId]?.let { activeInv ->
                 startStateObserver(currentPageId, activeInv)
             }
@@ -142,7 +141,6 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
             val currentPageId = builder.session.handler.getCurrentPage(viewer) ?: 0
             if (LimeFrameAPI.debugging) println("Refresh PageId used $currentPageId")
 
-            // Re-render from scratch (Creates new Inventory objects)
             if (buffer == null) {
                 builder.pages.forEach { (pageId, guiPage) ->
                     renderPage(pageId, guiPage, reuseExisting = false)
@@ -151,17 +149,14 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
                 renderBufferPages(currentPageId, reuseExisting = false)
             }
 
-            // Actually push the new inventory to the player's screen!
             handler.open(viewer, currentPageId)
 
-            // Restart observers for the new inventory
             handler.pageInventories[currentPageId]?.let { activeInv ->
                 startStateObserver(currentPageId, activeInv)
             }
         }
     }
 
-    // Added reuseExisting parameter
     private fun renderBufferPages(finalPageId: Int, reuseExisting: Boolean = false) {
         val currentBuffer = buffer ?: return
         val pagesToRender = mutableSetOf<Int>()
@@ -187,61 +182,11 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         }
     }
 
-    // Added reuseExisting parameter
+    /**
+     * Delegates inventory drawing to PageRenderer.
+     */
     private fun renderPage(pageId: Int, guiPage: GuiPage, reuseExisting: Boolean = false) {
-
-        // FIX: If soft-refreshing, grab the existing inventory and clear it so we don't break the handler
-        val existingInv = handler.pageInventories[pageId]
-        val styledInventory = if (reuseExisting && existingInv != null) {
-            existingInv.clear()
-            existingInv
-        } else {
-            createStylishInventory(pageId)
-        }
-
-        fun getValidItem(items: List<GuiItem>): GuiItem? {
-            return items.sortedByDescending { it.priority }
-                .firstOrNull { item ->
-                    val resolvedReqs = TextResolver.resolveList(viewer, item.viewRequirements, blueprint.setting)
-                    ConditionEngine.checkRequirements(viewer, resolvedReqs)
-                }
-        }
-
-        // 1. Process Global Page
-        if (pageId != 0) {
-            val globalItemsBySlot = globalPage.getItems().filter { it.slot != null }.groupBy { it.slot!! }
-
-            for ((slot, items) in globalItemsBySlot) {
-                if (globalPage.trackAddItemSlot.containsKey(slot)) continue
-
-                val validItem = getValidItem(items)
-                if (validItem != null) {
-                    val globalStack = ItemRenderer.render(validItem, context, blueprint.setting)
-                    styledInventory.setItem(slot, globalStack)
-                }
-            }
-        }
-
-        // 2. Process Current Page
-        val localItemsBySlot = guiPage.getItems().filter { it.slot != null }.groupBy { it.slot!! }
-
-        for ((slot, items) in localItemsBySlot) {
-            val validItem = getValidItem(items)
-            if (validItem != null) {
-                val finalItemStack = ItemRenderer.render(validItem, context, blueprint.setting)
-                styledInventory.setItem(slot, finalItemStack)
-            }
-        }
-
-        // 3. Save it back to the handler
-        handler.pageInventories[pageId] = styledInventory
-        guiPage.inventory = styledInventory
-        guiPage.isRendered = true
-    }
-    private fun createStylishInventory(pageId: Int): Inventory {
-        val styledTitle = generateTitle(blueprint.setting.title, pageId)
-        val size = blueprint.setting.rows * 9
-        return Bukkit.createInventory(handler, size, styledTitle)
+        PageRenderer.render(this, pageId, guiPage, reuseExisting)
     }
 
     private fun renderRange(range: IntRange, allPageIds: List<Int>) {
@@ -255,19 +200,10 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
         }
     }
 
-    private fun generateTitle(rawTitle: String, pageId: Int): String {
-        val title = if (context.placeholder["{page}"] == null) {
-            rawTitle.replace("{page}", pageId.toString())
-        } else rawTitle
-        val titleRule = blueprint.setting.style.textSettings.title
-        return FontStyle.applyStyle(title, context, titleRule)
-    }
-
     private fun startStateObserver(pageId: Int, inventory: Inventory) {
         activeObserverTask?.cancel()
         val volatileNodes = mutableMapOf<Int, GuiItem>()
 
-        // Helper to check requirements with full TextResolver context!
         fun getActiveItem(items: List<GuiItem>): GuiItem? {
             return items.sortedByDescending { it.priority }
                 .firstOrNull { item ->
@@ -276,7 +212,7 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
                 }
         }
 
-        // 1. Scan Global Page for volatile items
+        // Scan Global Page for volatile items
         val globalItemsBySlot = globalPage.getItems().filter { it.slot != null }.groupBy { it.slot!! }
         for ((slot, items) in globalItemsBySlot) {
             if (globalPage.trackAddItemSlot.containsKey(slot)) continue
@@ -287,7 +223,7 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
             }
         }
 
-        // 2. Scan Current Page for volatile items
+        // Scan Current Page for volatile items
         val localItemsBySlot = builder.pages[pageId]?.getItems()?.filter { it.slot != null }?.groupBy { it.slot!! } ?: emptyMap()
         for ((slot, items) in localItemsBySlot) {
             val winner = getActiveItem(items)
@@ -298,7 +234,7 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
 
         if (volatileNodes.isEmpty()) return
 
-        // 3. Launch the Observer
+        // Launch the Observer
         activeObserverTask = object : BukkitRunnable() {
             var ticksLived = 0
             override fun run() {
@@ -311,7 +247,7 @@ class GuiSession(private val blueprint: ChestGUI, val context: GuiStyleSheet) {
                 for ((slot, blueprintItem) in volatileNodes) {
                     val interval = blueprintItem.updateInterval ?: continue
                     if (ticksLived % interval == 0) {
-                        val updatedStack = ItemRenderer.render(blueprintItem, context, blueprint.setting)
+                        val updatedStack = ItemRenderer.render(blueprintItem, styleSheet, blueprint.setting)
                         inventory.setItem(slot, updatedStack)
                     }
                 }

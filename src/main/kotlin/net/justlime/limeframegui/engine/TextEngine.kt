@@ -76,6 +76,43 @@ object TextEngine {
     }
 
     /**
+     * Centers text perfectly for a standard 176-pixel Minecraft Chest GUI.
+     * Calculates proportional pixel width, ignoring color/gradient tags.
+     */
+    fun applyCenter(text: String, rule: TextFormatRule): String {
+        if (rule.center != true) return text
+
+        val miniMessageRegex = Regex("<[^>]*>")
+        val legacyRegex = Regex("(?i)[&§][0-9A-FK-ORX]")
+        val rawVisibleText = text.replace(miniMessageRegex, "").replace(legacyRegex, "")
+
+        var pixelWidth = 0
+        val isBold = rule.weights?.any { it.equals("bold", ignoreCase = true) } == true
+
+        // Calculate the exact pixel width of the text
+        for (c in rawVisibleText) {
+            if (c == '§') continue
+            var charWidth = when (c) {
+                '!', '.', ',', ':', ';', 'i', '|', '\'', 'ɪ' -> 2
+                'l', '`', 'ʟ' -> 3
+                ' ', 'I', '[', ']', 't', '"', 'ᴛ' -> 4
+                'k', 'f', '<', '>', 'ᴋ', 'ғ' -> 5
+                '@', '~' -> 7
+                else -> 6 // Standard width for almost all A-Z, 0-9, and Small Caps
+            }
+            if (isBold && c != ' ') charWidth += 1 // Bold letters get 1px thicker
+            pixelWidth += charWidth
+        }
+
+        // Chest title starts 8 pixels from the left edge. Center point is 88.
+        val paddingPixels = 80 - (pixelWidth / 2)
+        if (paddingPixels <= 0) return text // Text is too big to be centered
+
+        // A standard space is 4 pixels wide.
+        val spacesNeeded = paddingPixels / 4
+        return " ".repeat(spacesNeeded) + text
+    }
+    /**
      * Automatically inserts newlines into long strings.
      * Intelligently ignores MiniMessage and Legacy color tags when calculating line length
      */
