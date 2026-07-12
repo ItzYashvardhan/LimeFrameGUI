@@ -44,7 +44,7 @@ object Base64Serializer {
     fun writeInventory(
         section: ConfigurationSection,
         inventory: Inventory,
-        title: String = FrameKeys.Default.DEFAULT_TITLE
+        title: String = FrameKeys.Default.DEFAULT_CHEST_TITLE
     ) {
         ConfigWriter.writeInventorySettingsToSection(section, inventory.size / 9, title)
         section.set(FrameKeys.Item.BASE64_DATA, FrameConverter.serializeInventory(inventory))

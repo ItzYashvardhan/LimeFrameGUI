@@ -1,19 +1,20 @@
 package net.justlime.limeframegui.config
 
-/**
- * Immutable, categorized configuration keys for the LimeFrame framework.
- */
+
 object FrameKeys {
 
     object Default{
         const val DEFAULT = "default"
-        const val DEFAULT_TITLE = "LimeFrame Inventory"
-        const val DEFAULT_ROWS = 6
+        const val DEFAULT_CHEST_TITLE = "LimeFrame Chest Inventory"
+        const val DEFAULT_CHEST_ROWS = 6
+        const val DEFAULT_ANVIL_TITLE = "LimeFrame Anvil Inventory"
+        const val DEFAULT_ANVIL_LABEL = "Type Here"
     }
 
     object Main {
         const val SECTION = "main"
         const val TITLE = "title"
+        const val LABEL = "label"
         const val ROWS = "rows"
         const val PATTERN = "pattern"
         const val TYPE = "type"
@@ -22,7 +23,9 @@ object FrameKeys {
         const val INHERIT = "inherit"
         const val INGREDIENTS = "ingredients"
         const val DYNAMIC_LIST = "dynamic_list"
+        const val PREVENT_CLOSE = "prevent_close"
     }
+
 
     object Type {
         const val GENERIC = "generic"
@@ -65,26 +68,17 @@ object FrameKeys {
         const val WRAP_LENGTH = "wrap-length"
     }
 
-    object Style {
+    object Sound {
         const val SOUND_CLICK = "click-sound"
         const val SOUND_OPEN = "open-sound"
         const val SOUND_CLOSE = "close-sound"
     }
 
     object Anvil {
-        const val TITLE = "title"
-        const val LABEL = "label"
         const val TYPE = "type"
         const val TYPE_LEFT = "left"
         const val TYPE_RIGHT = "right"
         const val TYPE_OUTPUT = "output"
-        const val PREVENT_CLOSE = "prevent-close"
-        const val SOUND_CANCEL = "cancel-sound"
-        const val SOUND_SUBMIT = "submit-sound"
-
-        // Defaults
-        const val DEFAULT_TITLE = "Anvil Gui"
-        const val DEFAULT_LABEL = "Type here"
     }
 
     object Context {

@@ -3,8 +3,6 @@ package net.justlime.limeframegui.registry.common
 import net.justlime.limeframegui.api.LimeFrameAPI
 import net.justlime.limeframegui.config.FrameKeys
 import net.justlime.limeframegui.config.GuiConfigHandler
-import net.justlime.limeframegui.context.AnvilGuiSetting
-import net.justlime.limeframegui.context.GuiSetting
 import net.justlime.limeframegui.context.IContextSetting
 import net.justlime.limeframegui.context.SharedContextSetting
 import net.justlime.limeframegui.enums.TextCase
@@ -12,7 +10,6 @@ import net.justlime.limeframegui.models.*
 import net.justlime.limeframegui.models.parser.CompiledLayers
 import net.justlime.limeframegui.models.parser.ConfigLayer
 import net.justlime.limeframegui.models.parser.PatternVariants
-import net.justlime.limeframegui.models.registry.ActionBehavior
 import net.justlime.limeframegui.models.registry.DynamicListMask
 import net.justlime.limeframegui.registry.component.ActionRegistry
 import net.justlime.limeframegui.registry.component.ItemRegistry
@@ -28,8 +25,8 @@ object TemplateCompiler {
         val configsToParse = resolveConfigChain(pageId, config) ?: return null
 
         //Settings
-        val setting = compileSettings(configsToParse)
-
+        val baseContext = compileSettings(configsToParse)
+        val setting = compileGuiSetting(configsToParse, baseContext)
 
         val unifiedFallbackDictionary = buildUnifiedDictionary(configsToParse)
 
@@ -51,30 +48,8 @@ object TemplateCompiler {
      */
     fun compileAnvil(anvilId: String, config: YamlConfiguration): AnvilGuiSetting? {
         val configsToParse = resolveConfigChain(anvilId, config) ?: return null
-        //Settings
         val baseContext = compileSettings(configsToParse)
-
-
-
-        val anvilSetting = GuiConfigHandler.loadAnvilSetting(config)
-        anvilSetting.title = baseContext.title
-        if (baseContext.label.isNotEmpty()) {
-            anvilSetting.label = baseContext.label
-        }
-
-        // Apply typography rules
-        anvilSetting.style.textSettings = baseContext.style.textSettings.clone()
-        anvilSetting.leftItem.style.textSettings = baseContext.style.textSettings.clone()
-        anvilSetting.rightItem.style.textSettings = baseContext.style.textSettings.clone()
-        anvilSetting.outPutItem.style.textSettings = baseContext.style.textSettings.clone()
-
-        // Inject Context Properties (Variables, Placeholders, Requirements)
-        anvilSetting.openRequirements = baseContext.openRequirements
-        anvilSetting.denyBehavior = baseContext.denyBehavior
-        anvilSetting.localVariables = baseContext.localVariables
-        anvilSetting.localPlaceholders = baseContext.localPlaceholders
-
-        return anvilSetting
+        return compileAnvilSetting(configsToParse, baseContext)
     }
 
 
@@ -154,8 +129,8 @@ object TemplateCompiler {
             if (mainSec.contains(FrameKeys.Main.TITLE)) {
                 context.title = mainSec.getString(FrameKeys.Main.TITLE) ?: context.title
             }
-            if (mainSec.contains(FrameKeys.Anvil.LABEL)) {
-                context.label = mainSec.getString(FrameKeys.Anvil.LABEL) ?: context.label
+            if (mainSec.contains(FrameKeys.Main.LABEL)) {
+                context.label = mainSec.getString(FrameKeys.Main.LABEL) ?: context.label
             }
 
             // Shared Session Boundaries
@@ -186,7 +161,7 @@ object TemplateCompiler {
     }
 
     private fun compileGuiSetting(configsToParse: List<ConfigLayer>, baseContext: IContextSetting): GuiSetting {
-        var rows = FrameKeys.Default.DEFAULT_ROWS
+        var rows = FrameKeys.Default.DEFAULT_CHEST_ROWS
 
         // Find rows specifically from parent down to child
         for (layer in configsToParse) {
@@ -208,16 +183,55 @@ object TemplateCompiler {
     }
 
     private fun compileAnvilSetting(configsToParse: List<ConfigLayer>, baseContext: IContextSetting): AnvilGuiSetting {
-        // 1. Load basic layout using your multi-layer config pipeline
-        val anvilSetting = GuiConfigHandler.loadAnvilSetting(configsToParse)
+        val anvilSetting = AnvilGuiSetting()
 
-        // 2. Map basic structural metadata
-        anvilSetting.title = baseContext.title
-        if (baseContext is SharedContextSetting) {
-            anvilSetting.label = baseContext.label
+        // Iterate structural layers from parent -> child to let items inherit safely
+        for (layer in configsToParse) {
+            val config = layer.config
+
+            // Legacy direct key check
+            config.getConfigurationSection(FrameKeys.Anvil.TYPE_LEFT)?.let { sec ->
+                anvilSetting.leftItem = GuiConfigHandler.loadItem(sec)
+            }
+            config.getConfigurationSection(FrameKeys.Anvil.TYPE_RIGHT)?.let { sec ->
+                anvilSetting.rightItem = GuiConfigHandler.loadItem(sec)
+            }
+            config.getConfigurationSection(FrameKeys.Anvil.TYPE_OUTPUT)?.let { sec ->
+                anvilSetting.outPutItem = GuiConfigHandler.loadItem(sec)
+            }
+
+            // Type-based dynamic key check
+            for (key in config.getKeys(false)) {
+                if (key == FrameKeys.Main.SECTION) continue
+                val sec = config.getConfigurationSection(key) ?: continue
+                val type = sec.getString(FrameKeys.Anvil.TYPE)?.uppercase() ?: continue
+                when (type) {
+                    "LEFT" -> anvilSetting.leftItem = GuiConfigHandler.loadItem(sec)
+                    "RIGHT" -> anvilSetting.rightItem = GuiConfigHandler.loadItem(sec)
+                    "OUTPUT" -> anvilSetting.outPutItem = GuiConfigHandler.loadItem(sec)
+                }
+            }
+
+            val mainSec = config.getConfigurationSection(FrameKeys.Main.SECTION)
+            if (mainSec != null && mainSec.contains(FrameKeys.Main.LABEL)) {
+                anvilSetting.label = mainSec.getString(FrameKeys.Main.LABEL) ?: anvilSetting.label
+            }
+
+            if (config.contains(FrameKeys.Main.PREVENT_CLOSE)) {
+                anvilSetting.preventClose = config.getBoolean(FrameKeys.Main.PREVENT_CLOSE)
+            }
+            if (config.contains(FrameKeys.Sound.SOUND_OPEN)) {
+                anvilSetting.openSoundString = config.getString(FrameKeys.Sound.SOUND_OPEN)
+            }
+            if (config.contains(FrameKeys.Sound.SOUND_CLOSE)) {
+                anvilSetting.closeSoundString = config.getString(FrameKeys.Sound.SOUND_CLOSE)
+            }
         }
 
-        // 3. Deep-copy global typography rules to individual slot instances
+        // Map basic structural metadata from the baseContext
+        anvilSetting.title = baseContext.title
+
+        // Deep-copy global typography rules to individual slot instances
         anvilSetting.style.textSettings = baseContext.style.textSettings.clone()
         anvilSetting.leftItem.style.textSettings = baseContext.style.textSettings.clone()
         anvilSetting.rightItem.style.textSettings = baseContext.style.textSettings.clone()

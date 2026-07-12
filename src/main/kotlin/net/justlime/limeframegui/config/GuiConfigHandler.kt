@@ -31,7 +31,7 @@ object GuiConfigHandler {
     fun writeItemToSection(section: ConfigurationSection, item: GuiItem) = ConfigWriter.writeItem(section, item)
     fun writeItemsToSection(section: ConfigurationSection, items: List<GuiItem>) = ConfigWriter.writeItems(section, items)
     fun writeInventorySettingToSection(section: ConfigurationSection, setting: GuiSetting) = ConfigWriter.writeInventorySetting(section, setting)
-    fun writeInventoryToSection(section: ConfigurationSection, inventory: Inventory, title: String = FrameKeys.Default.DEFAULT_TITLE) = ConfigWriter.writeInventory(section, inventory, title)
+    fun writeInventoryToSection(section: ConfigurationSection, inventory: Inventory, title: String = FrameKeys.Default.DEFAULT_CHEST_TITLE) = ConfigWriter.writeInventory(section, inventory, title)
 
     // BASE64 READING
     fun loadItemBase64(section: ConfigurationSection, key: String): ItemStack? = Base64Serializer.loadItem(section, key)
@@ -41,5 +41,5 @@ object GuiConfigHandler {
     // BASE64 WRITING
     fun writeItemBase64(section: ConfigurationSection, key: String, itemStack: ItemStack) = Base64Serializer.writeItem(section, key, itemStack)
     fun writeItemsBase64(section: ConfigurationSection, item: ItemStack) = Base64Serializer.writeItemsData(section, item)
-    fun writeInventoryBase64ToSection(section: ConfigurationSection, inventory: Inventory, title: String = FrameKeys.Default.DEFAULT_TITLE) = Base64Serializer.writeInventory(section, inventory, title)
+    fun writeInventoryBase64ToSection(section: ConfigurationSection, inventory: Inventory, title: String = FrameKeys.Default.DEFAULT_CHEST_TITLE) = Base64Serializer.writeInventory(section, inventory, title)
 }

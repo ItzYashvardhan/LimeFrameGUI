@@ -10,20 +10,20 @@ import org.bukkit.inventory.Inventory
 object InventorySerializer {
 
     fun loadInventorySetting(section: ConfigurationSection?): GuiSetting {
-        if (section == null) return GuiSetting(FrameKeys.Default.DEFAULT_ROWS, FrameKeys.Default.DEFAULT_TITLE)
+        if (section == null) return GuiSetting(FrameKeys.Default.DEFAULT_CHEST_ROWS, FrameKeys.Default.DEFAULT_CHEST_TITLE)
 
         return GuiSetting(
-            rows = section.getInt(FrameKeys.Main.ROWS, FrameKeys.Default.DEFAULT_ROWS),
-            title = section.getString(FrameKeys.Main.TITLE, FrameKeys.Default.DEFAULT_TITLE)
-                ?: FrameKeys.Default.DEFAULT_TITLE,
+            rows = section.getInt(FrameKeys.Main.ROWS, FrameKeys.Default.DEFAULT_CHEST_ROWS),
+            title = section.getString(FrameKeys.Main.TITLE, FrameKeys.Default.DEFAULT_CHEST_TITLE)
+                ?: FrameKeys.Default.DEFAULT_CHEST_TITLE,
             style = GuiStyleSheet(
                 textSettings = guiTextSettings(section),
-                clickSoundAlias = section.getString(FrameKeys.Style.SOUND_CLICK)
-                    ?: section.getStringList(FrameKeys.Style.SOUND_CLICK).firstOrNull(),
-                openSoundAlias = section.getString(FrameKeys.Style.SOUND_OPEN)
-                    ?: section.getStringList(FrameKeys.Style.SOUND_OPEN).firstOrNull(),
-                closeSoundAlias = section.getString(FrameKeys.Style.SOUND_CLOSE)
-                    ?: section.getStringList(FrameKeys.Style.SOUND_CLOSE).firstOrNull()
+                clickSoundAlias = section.getString(FrameKeys.Sound.SOUND_CLICK)
+                    ?: section.getStringList(FrameKeys.Sound.SOUND_CLICK).firstOrNull(),
+                openSoundAlias = section.getString(FrameKeys.Sound.SOUND_OPEN)
+                    ?: section.getStringList(FrameKeys.Sound.SOUND_OPEN).firstOrNull(),
+                closeSoundAlias = section.getString(FrameKeys.Sound.SOUND_CLOSE)
+                    ?: section.getStringList(FrameKeys.Sound.SOUND_CLOSE).firstOrNull()
             )
         )
     }
@@ -53,10 +53,10 @@ object InventorySerializer {
         for(key in section.getKeys(false)){
             if (key == FrameKeys.Main.SECTION) {
                 val mainSec = section.getConfigurationSection(FrameKeys.Main.SECTION)
-                setting.title = mainSec?.getString(FrameKeys.Anvil.TITLE, FrameKeys.Anvil.DEFAULT_TITLE) ?: FrameKeys.Anvil.DEFAULT_TITLE
-                setting.label =  mainSec?.getString(FrameKeys.Anvil.LABEL, FrameKeys.Anvil.DEFAULT_LABEL) ?: FrameKeys.Anvil.DEFAULT_LABEL
-                setting.openSoundString = mainSec?.getString(FrameKeys.Style.SOUND_OPEN) ?: section.getStringList(FrameKeys.Style.SOUND_OPEN).firstOrNull()
-                setting.preventClose = mainSec?.getBoolean(FrameKeys.Anvil.PREVENT_CLOSE, false) ?: false
+                setting.title = mainSec?.getString(FrameKeys.Main.TITLE, FrameKeys.Default.DEFAULT_ANVIL_TITLE) ?: FrameKeys.Default.DEFAULT_ANVIL_TITLE
+                setting.label =  mainSec?.getString(FrameKeys.Main.LABEL, FrameKeys.Default.DEFAULT_ANVIL_LABEL) ?: FrameKeys.Default.DEFAULT_ANVIL_LABEL
+                setting.openSoundString = mainSec?.getString(FrameKeys.Sound.SOUND_OPEN) ?: section.getStringList(FrameKeys.Sound.SOUND_OPEN).firstOrNull()
+                setting.preventClose = mainSec?.getBoolean(FrameKeys.Main.PREVENT_CLOSE, false) ?: false
                 continue
             }
             val itemSection = section.getConfigurationSection(key) ?: continue

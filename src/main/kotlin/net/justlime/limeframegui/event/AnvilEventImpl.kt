@@ -38,13 +38,13 @@ class AnvilEventImpl(
             val resolvedTitle = TextResolver.resolve(player, setting.title, setting)
             val rawTitle = FontStyle.applyStyle(resolvedTitle, context, context.textSettings.title)
 
+            val leftStack = ItemRenderer.render(setting.leftItem, context, setting)
+            val outputStack = ItemRenderer.render(setting.outPutItem, context, setting)
+
             val resolvedLabel = TextResolver.resolve(player, setting.label, setting)
             val rawLabel = FontStyle.applyStyle(resolvedLabel, context, TextFormatRule())
 
             val jsonTitle = componentToJson(rawTitle)
-
-            val leftStack = ItemRenderer.render(setting.leftItem, context, setting)
-            val outputStack = ItemRenderer.render(setting.outPutItem, context, setting)
 
             setting.openSoundString?.let { alias ->
                 GuiSound.playPack(player, SoundRegistry.get(alias))

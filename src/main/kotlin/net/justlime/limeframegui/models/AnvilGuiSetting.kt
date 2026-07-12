@@ -16,6 +16,7 @@ data class AnvilGuiSetting(
 
     // Raw aliases for safe config saving
     var openSoundString: String? = null,
+    var closeSoundString: String? = null,
 
     override var style: GuiStyleSheet = GuiStyleSheet(),
     var preventClose: Boolean = false,

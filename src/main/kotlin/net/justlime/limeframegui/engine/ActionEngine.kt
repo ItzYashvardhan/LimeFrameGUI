@@ -274,7 +274,7 @@ object ActionEngine {
 
     private fun runCustomJavaCode(response: ActionTagRegistryResponse) {
         val identifier = response.payload
-        if (response.handler == null) {
+        if (response.handler == null && response.context == null) {
             println("[LimeFrameGUI] Warning: Attempted to run Java code '$identifier' outside of a GUI context.")
             return
         }

@@ -66,7 +66,7 @@ object ConfigWriter {
         if (item.priority != 0) section.set(FrameKeys.Item.PRIORITY, item.priority)
 
         // 4. Stylish Settings
-        item.style.clickSoundAlias?.let { section.set(FrameKeys.Style.SOUND_CLICK, it) }
+        item.style.clickSoundAlias?.let { section.set(FrameKeys.Sound.SOUND_CLICK, it) }
 
         val textSec = section.createSection(FrameKeys.Text.SECTION)
         writeRule(textSec, "name", item.style.textSettings.name)
@@ -102,7 +102,7 @@ object ConfigWriter {
     fun writeInventory(
         section: ConfigurationSection,
         inventory: Inventory,
-        title: String = FrameKeys.Default.DEFAULT_TITLE
+        title: String = FrameKeys.Default.DEFAULT_CHEST_TITLE
     ) {
         writeInventorySettingsToSection(section, inventory.size / 9, title)
         val itemsSection = section.createSection(FrameKeys.Item.SECTION)
@@ -124,9 +124,9 @@ object ConfigWriter {
         section.set(FrameKeys.Main.ROWS, rows)
 
         if (style != null) {
-            style.clickSoundAlias?.let { section.set(FrameKeys.Style.SOUND_CLICK, it) }
-            style.openSoundAlias?.let { section.set(FrameKeys.Style.SOUND_OPEN, it) }
-            style.closeSoundAlias?.let { section.set(FrameKeys.Style.SOUND_CLOSE, it) }
+            style.clickSoundAlias?.let { section.set(FrameKeys.Sound.SOUND_CLICK, it) }
+            style.openSoundAlias?.let { section.set(FrameKeys.Sound.SOUND_OPEN, it) }
+            style.closeSoundAlias?.let { section.set(FrameKeys.Sound.SOUND_CLOSE, it) }
         }
     }
 

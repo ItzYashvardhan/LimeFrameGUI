@@ -51,8 +51,8 @@ val ConfigurationSection.actionString: String?
     get() = getString(FrameKeys.Item.ACTION)
 
 val ConfigurationSection.itemClickSound: String?
-    get() = getString(FrameKeys.Style.SOUND_CLICK)
-        ?: getStringList(FrameKeys.Style.SOUND_CLICK).firstOrNull()
+    get() = getString(FrameKeys.Sound.SOUND_CLICK)
+        ?: getStringList(FrameKeys.Sound.SOUND_CLICK).firstOrNull()
 
 val ConfigurationSection.isUnbreakable: Boolean
     get() = getBoolean(FrameKeys.Item.UNBREAKABLE, false)
