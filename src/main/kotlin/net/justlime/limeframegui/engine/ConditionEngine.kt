@@ -1,6 +1,7 @@
 package net.justlime.limeframegui.engine
 
 import me.clip.placeholderapi.PlaceholderAPI
+import net.justlime.limeframegui.registry.component.ConditionRegistry
 import org.apache.commons.jexl3.JexlBuilder
 import org.apache.commons.jexl3.JexlEngine
 import org.bukkit.Bukkit
@@ -20,28 +21,47 @@ object ConditionEngine {
      * Returns TRUE if all requirements are met.
      */
     fun checkRequirements(player: Player, requirements: List<String>): Boolean {
-        if (requirements.isEmpty()) return true
-        return requirements.all { evaluateSingle(player, it) }
+        return requirements.isEmpty() || requirements.all { evaluateSingle(player, it) }
     }
 
     private fun evaluateSingle(player: Player, conditionString: String): Boolean {
         val str = conditionString.trim()
 
-        // Simple Permission Check: "[permission] betterteams.admin"
+        // Simple Permission Check
         if (str.startsWith("[permission]", ignoreCase = true)) {
             val perm = str.removePrefix("[permission]").trim()
             return player.hasPermission(perm)
         }
 
-        // Simple Group Check (Assuming Vault or LuckPerms API here, simplified for example)
+        // Simple Group Check
         if (str.startsWith("[group]", ignoreCase = true)) {
             val group = str.removePrefix("[group]").trim()
-            return player.hasPermission("group.$group") // Basic LuckPerms fallback check
+            return player.hasPermission("group.$group")
         }
 
-        // Complex Condition Check
+        // Complex Condition Check & Custom Conditions
         if (str.startsWith("[condition]", ignoreCase = true)) {
             var mathExpression = str.removePrefix("[condition]").trim()
+
+            // 1. THIS IS THE MISSING CODE: Check for custom Kotlin conditions first!
+            val parts = mathExpression.split(" ")
+            val conditionId = parts[0].lowercase()
+
+            // Look up the condition in the registry we created
+            val customCondition = net.justlime.limeframegui.registry.component.ConditionRegistry.get(conditionId)
+
+            if (customCondition != null) {
+                // Pass any remaining arguments to the custom function
+                val args = if (parts.size > 1) parts.drop(1) else emptyList()
+                return try {
+                    customCondition(player, args)
+                } catch (e: Exception) {
+                    Bukkit.getLogger().warning("[LimeFrameGUI] Custom condition '$conditionId' crashed: ${e.message}")
+                    false
+                }
+            }
+
+            // 2. If no custom condition is found, fall back to Math / JEXL
             mathExpression = mathExpression.replace("{", "%").replace("}", "%")
             if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
                 mathExpression = PlaceholderAPI.setPlaceholders(player, mathExpression)

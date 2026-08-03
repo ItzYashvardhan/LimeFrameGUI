@@ -136,8 +136,13 @@ object GuiManager {
                 .firstOrNull { (perm, _) -> perm == "default" || player.hasPermission(perm) }
                 ?.value ?: template.permissionItems["default"] ?: emptyList()
 
-            val nextBtn = activeItems.find { it.style.action == "core_next_page" }
-            val prevBtn = activeItems.find { it.style.action == "core_prev_page" }
+            val nextBtn = activeItems
+                .filter { it.style.action == "core_next_page" }
+                .maxByOrNull { it.priority }
+            
+            val prevBtn = activeItems
+                .filter { it.style.action == "core_prev_page" }
+                .maxByOrNull { it.priority }
 
             template.dynamicMask?.let { mask ->
                 nav {
