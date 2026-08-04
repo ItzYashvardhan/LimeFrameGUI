@@ -138,8 +138,29 @@ object GuiDirectoryHandler {
         if (!inputsFolder.exists()) inputsFolder.mkdirs()
 
         val yamlFiles = inputsFolder.walk().filter { it.isFile && it.extension == "yml" }.toList()
+        val standardInputs = mutableListOf<File>()
 
+        // LOAD ALL TEMPLATES FIRST
         for (file in yamlFiles) {
+            try {
+                val relativePath = file.relativeTo(inputsFolder).path
+                val inputId = relativePath.removeSuffix(".yml").replace("\\", "/")
+
+                val fileHandler = YamlFileHandler(file)
+                val type = fileHandler.config.getString("main.type")?.lowercase()
+
+                if (inputId.startsWith("template/") || type == "template" || type == "interface") {
+                    TemplateCompiler.compileAnvil(inputId, fileHandler.config)
+                } else {
+                    standardInputs.add(file)
+                }
+            } catch (e: Exception) {
+                ConfigErrorHandler.printFriendlyError(plugin.logger, file, e)
+            }
+        }
+
+        // LOAD STANDARD INPUTS
+        for (file in standardInputs) {
             try {
                 val fileHandler = YamlFileHandler(file)
                 val relativePath = file.relativeTo(inputsFolder).path
@@ -153,6 +174,7 @@ object GuiDirectoryHandler {
                 ConfigErrorHandler.printFriendlyError(plugin.logger, file, e)
             }
         }
+
         plugin.logger.info("[LimeFrameGUI] Successfully indexed ${InputRegistry.getInputs().size} anvil inputs.")
     }
 
